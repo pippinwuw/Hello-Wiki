@@ -38,7 +38,7 @@ class IngestPipelineUseCase:
         self._chunker = RecursiveChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self._extractor = StructuredExtractionAdapter(provider)
 
-    async def execute(self, command: IngestDocumentCommand) -> dict:
+    async def execute(self, command: IngestDocumentCommand) -> dict[str, object]:
         texts = self._loader.load(command.file_path)
         raw_text = "\n".join(texts)
         source_document = command.file_path.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
@@ -54,8 +54,8 @@ class IngestPipelineUseCase:
 
         chunks = self._chunker.split(raw_text, source_document=source_document)
         total = len(chunks)
-        results: list[dict] = []
-        errors: list[dict] = []
+        results: list[dict[str, object]] = []
+        errors: list[dict[str, object]] = []
 
         for chunk_text, meta in chunks:
             try:

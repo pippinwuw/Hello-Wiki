@@ -1,10 +1,10 @@
-from langchain_core.tools import tool
+from langchain_core.tools import BaseTool, tool
 
 from src.application.ingest.commands import IngestDocumentCommand
 from src.application.ingest.handlers import IngestDocumentHandler
 
 
-def create_ingest_tool(handler: IngestDocumentHandler):
+def create_ingest_tool(handler: IngestDocumentHandler) -> BaseTool:
     @tool
     async def ingest_document(file_path: str, domain: str = "general") -> str:
         """导入文档并提取结构化知识。

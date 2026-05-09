@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from src.domain.knowledge.value_objects import ChunkStatus, EventType, PageStatus
@@ -22,7 +22,7 @@ class RawChunk:
     created_at: datetime = field(default_factory=datetime.now)
 
     @classmethod
-    def create(cls, original_text: str, **kwargs) -> "RawChunk":
+    def create(cls, original_text: str, **kwargs: Any) -> "RawChunk":
         return cls(id=uuid4(), original_text=original_text, **kwargs)
 
 

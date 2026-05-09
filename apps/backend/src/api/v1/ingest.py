@@ -14,7 +14,7 @@ from src.application.ingest.handlers import CompileDocumentHandler, IngestDocume
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
-TASK_STATUS: dict[str, dict] = {}
+TASK_STATUS: dict[str, dict[str, object]] = {}
 
 
 @router.post("/compile", response_model=CompileResponse)
@@ -57,7 +57,7 @@ async def ingest_upload(
     suffix = os.path.splitext(file.filename or ".txt")[1]
     content = await file.read()
 
-    async def _run():
+    async def _run() -> None:
         TASK_STATUS[task_id]["status"] = "running"
         tmp_path = ""
         try:

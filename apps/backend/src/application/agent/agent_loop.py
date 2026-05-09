@@ -1,5 +1,7 @@
+from typing import Any
+
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.tools import BaseTool
 
 from src.application.agent.commands import AgentCommand
@@ -26,10 +28,10 @@ class AgentLoop:
 
     def __init__(self, provider: LLMProviderPort, tools: list[BaseTool]) -> None:
         llm = provider.as_runnable()
-        self._agent = create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)
+        self._agent = create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)  # type: ignore[arg-type]
 
     async def run(self, command: AgentCommand) -> str:
-        messages = []
+        messages: list[BaseMessage] = []
         for h in command.chat_history or []:
             role = h.get("role", "")
             content = h.get("content", "")
@@ -38,6 +40,6 @@ class AgentLoop:
             else:
                 messages.append(HumanMessage(content=content))
         messages.append(HumanMessage(content=command.user_input))
-        result = await self._agent.ainvoke({"messages": messages})
+        result = await self._agent.ainvoke({"messages": messages})  # type: ignore[call-overload]
         last = result["messages"][-1]
         return str(last.content)

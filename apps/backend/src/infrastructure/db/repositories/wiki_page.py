@@ -5,8 +5,8 @@ Wiki 页面仓库实现
 
 import json
 import os
+from typing import Any, Optional
 from uuid import UUID
-from typing import Optional
 
 from src.domain.wiki.entities import WikiPage
 from src.domain.wiki.repository import WikiPageRepository
@@ -26,7 +26,7 @@ class FileSystemWikiPageRepository(WikiPageRepository):
     def _get_index_path(self, workspace_id: UUID) -> str:
         return f"{self._get_storage_path(workspace_id)}/pages.json"
 
-    def _read_pages(self, workspace_id: UUID) -> list[dict]:
+    def _read_pages(self, workspace_id: UUID) -> list[dict[str, Any]]:
         index_path = self._get_index_path(workspace_id)
         if not os.path.exists(index_path):
             return []
@@ -34,7 +34,7 @@ class FileSystemWikiPageRepository(WikiPageRepository):
             data = json.load(f)
             return data if isinstance(data, list) else []
 
-    def _write_pages(self, workspace_id: UUID, pages: list[dict]) -> None:
+    def _write_pages(self, workspace_id: UUID, pages: list[dict[str, Any]]) -> None:
         index_path = self._get_index_path(workspace_id)
         with open(index_path, "w", encoding="utf-8") as f:
             json.dump(pages, f, ensure_ascii=False, indent=2, default=str)

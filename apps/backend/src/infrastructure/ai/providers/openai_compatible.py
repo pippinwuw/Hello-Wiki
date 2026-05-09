@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from langchain_core.runnables import Runnable
 from langchain_openai import ChatOpenAI
@@ -39,7 +39,7 @@ class OpenAICompatibleProvider(LLMProviderPort):
         self, messages: list[dict[str, str]], output_schema: type[T]
     ) -> T:
         structured_model = self._model.with_structured_output(output_schema, method="json_mode")
-        return await structured_model.ainvoke(messages)
+        return await structured_model.ainvoke(messages)  # type: ignore[return-value]
 
-    def as_runnable(self) -> Runnable:
+    def as_runnable(self) -> Runnable[Any, Any]:
         return self._model

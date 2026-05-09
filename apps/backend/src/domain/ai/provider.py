@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel
@@ -23,4 +23,4 @@ class LLMProviderPort(ABC):
     ) -> T: ...
 
     @abstractmethod
-    def as_runnable(self) -> Runnable: ...
+    def as_runnable(self) -> Runnable[Any, Any]: ...

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field
@@ -51,17 +52,17 @@ class InitTagsUseCase:
         ]
         return await self._provider.generate_structured(messages, TagTreeSchema)
 
-    def _load_index(self) -> dict:
+    def _load_index(self) -> dict[str, Any]:
         index_path = self.SKILLS_BASE / "index.yaml"
         with open(index_path, encoding="utf-8") as f:
-            return yaml.safe_load(f)
+            return yaml.safe_load(f)  # type: ignore[no-any-return]
 
-    def _resolve_reference(self, index: dict, domain: str) -> dict:
+    def _resolve_reference(self, index: dict[str, Any], domain: str) -> dict[str, Any]:
         for ref in index["references"]:
             if ref["id"] == domain:
-                return ref
+                return ref  # type: ignore[no-any-return]
         fallback = next(r for r in index["references"] if r.get("default"))
-        return fallback
+        return fallback  # type: ignore[no-any-return]
 
     def _load_prompt(self, prompt_path: str) -> str:
         full_path = self.SKILLS_BASE / prompt_path

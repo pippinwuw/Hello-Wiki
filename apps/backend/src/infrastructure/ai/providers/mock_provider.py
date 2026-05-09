@@ -63,9 +63,9 @@ class MockLLMProvider(LLMProviderPort):
                 "response": result,
             }
         )
-        return result
+        return result  # type: ignore[no-any-return]
 
-    def as_runnable(self) -> Runnable:
+    def as_runnable(self) -> Runnable[Any, Any]:
         return RunnableLambda(lambda x: self.generate(x))
 
     def reset_log(self) -> None:

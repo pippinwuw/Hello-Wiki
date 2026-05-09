@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from fastapi import Header, HTTPException, status
@@ -53,11 +55,11 @@ def get_ingest_compile_handler() -> CompileDocumentHandler:
     return CompileDocumentHandler(use_case=use_case)
 
 
-def get_agent_handler() -> "AgentHandler":
+def get_agent_handler() -> "AgentHandler":  # type: ignore[name-defined]
     return wiring.build_agent_handler()
 
 
-def get_ingest_pipeline_handler() -> "IngestDocumentHandler":
+def get_ingest_pipeline_handler() -> "IngestDocumentHandler":  # type: ignore[name-defined]
     return wiring.build_ingest_pipeline_handler()
 
 

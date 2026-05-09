@@ -1,10 +1,10 @@
-from langchain_core.tools import tool
+from langchain_core.tools import BaseTool, tool
 
 from src.application.init.commands import InitTagsCommand
 from src.application.init.handlers import InitTagsHandler
 
 
-def create_init_tags_tool(handler: InitTagsHandler):
+def create_init_tags_tool(handler: InitTagsHandler) -> BaseTool:
     @tool
     async def init_tags(domain: str, description: str, language: str = "zh") -> str:
         """初始化知识库标签体系。

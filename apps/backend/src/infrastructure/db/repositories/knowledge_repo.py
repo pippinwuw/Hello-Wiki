@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from datetime import datetime
 from uuid import UUID
 
 import asyncpg
@@ -18,7 +21,7 @@ def _jsonb(val: object) -> str:
     return json.dumps(val, ensure_ascii=False, default=str)
 
 
-def _tstzrange(start, end) -> str:
+def _tstzrange(start: datetime | None, end: datetime | None) -> str:
     s = start.isoformat() if start else ""
     e = end.isoformat() if end else ""
     return f"[{s},{e})"
@@ -58,7 +61,7 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
                 chunk.effective_range and _tstzrange(*chunk.effective_range),
                 chunk.status.value,
             )
-            return row["id"]
+            return row["id"]  # type: ignore[no-any-return]
         finally:
             if close:
                 await conn.close()
@@ -102,7 +105,7 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
                 page.status.value,
                 page.version,
             )
-            return row["id"]
+            return row["id"]  # type: ignore[no-any-return]
         finally:
             if close:
                 await conn.close()
@@ -229,7 +232,7 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
                 event.source_description,
                 event.summary,
             )
-            return row["id"]
+            return row["id"]  # type: ignore[no-any-return]
         finally:
             if close:
                 await conn.close()
@@ -256,7 +259,7 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
                 version.timeline_id,
                 _jsonb(version.timeline_state),
             )
-            return row["id"]
+            return row["id"]  # type: ignore[no-any-return]
         finally:
             if close:
                 await conn.close()

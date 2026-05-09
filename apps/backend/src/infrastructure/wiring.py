@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from src.core.config import settings
 from src.domain.ai.provider import LLMProviderPort
 from src.infrastructure.ai.providers.mock_provider import MockLLMProvider
@@ -30,7 +32,7 @@ def build_llm_provider() -> LLMProviderPort:
     )
 
 
-def build_init_tags_handler() -> "InitTagsHandler":
+def build_init_tags_handler() -> "InitTagsHandler":  # type: ignore[name-defined]
     from src.application.init.handlers import InitTagsHandler
     from src.application.init.init_tags import InitTagsUseCase
 
@@ -39,7 +41,7 @@ def build_init_tags_handler() -> "InitTagsHandler":
     return InitTagsHandler(use_case)
 
 
-def build_agent_loop() -> "AgentLoop":
+def build_agent_loop() -> "AgentLoop":  # type: ignore[name-defined]
     from src.application.agent.agent_loop import AgentLoop
     from src.application.agent.tools.init_tags_tool import create_init_tags_tool
 
@@ -49,13 +51,13 @@ def build_agent_loop() -> "AgentLoop":
     return AgentLoop(provider=provider, tools=tools)
 
 
-def build_agent_handler() -> "AgentHandler":
+def build_agent_handler() -> "AgentHandler":  # type: ignore[name-defined]
     from src.application.agent.handlers import AgentHandler
 
     return AgentHandler(build_agent_loop())
 
 
-def build_ingest_pipeline() -> "IngestPipelineUseCase":
+def build_ingest_pipeline() -> "IngestPipelineUseCase":  # type: ignore[name-defined]
     from src.application.ingest.pipeline import IngestPipelineUseCase
     from src.infrastructure.db.repositories.knowledge_repo import KnowledgeAsyncRepository
 
@@ -64,7 +66,7 @@ def build_ingest_pipeline() -> "IngestPipelineUseCase":
     return IngestPipelineUseCase(provider=provider, repository=repository)
 
 
-def build_ingest_pipeline_handler() -> "IngestDocumentHandler":
+def build_ingest_pipeline_handler() -> "IngestDocumentHandler":  # type: ignore[name-defined]
     from src.application.ingest.handlers import IngestDocumentHandler
 
     return IngestDocumentHandler(build_ingest_pipeline())
