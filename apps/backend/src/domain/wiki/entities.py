@@ -12,6 +12,7 @@ from enum import StrEnum
 
 class WikiStatus(StrEnum):
     """Wiki 页面状态"""
+
     ACTIVE = "active"
     ARCHIVED = "archived"
     DELETED = "deleted"
@@ -20,6 +21,7 @@ class WikiStatus(StrEnum):
 @dataclass
 class WikiFact:
     """Wiki 事实（结构化知识）"""
+
     key: str
     value: str
     confidence: float = 1.0
@@ -28,6 +30,7 @@ class WikiFact:
 @dataclass
 class WikiParseReference:
     """Wiki 解析引用（来源文档）"""
+
     source_document_id: str
     reference_type: str
 
@@ -58,8 +61,14 @@ class WikiPage:
         self.updated_at = datetime.now()
 
     @classmethod
-    def create(cls, workspace_id: UUID, title: str, category: str = "general",
-               content: str = "", created_by: Optional[str] = None) -> "WikiPage":
+    def create(
+        cls,
+        workspace_id: UUID,
+        title: str,
+        category: str = "general",
+        content: str = "",
+        created_by: Optional[str] = None,
+    ) -> "WikiPage":
         return cls(
             wiki_id=uuid4(),
             workspace_id=workspace_id,

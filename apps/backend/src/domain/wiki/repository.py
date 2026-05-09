@@ -24,3 +24,13 @@ class WikiPageRepository(ABC):
     @abstractmethod
     def get_by_workspace(self, workspace_id: UUID) -> list[WikiPage]:
         pass
+
+
+# Aliases required by existing modules (compile_workflow, async_wiki_repo_adapter)
+# Must be distinct classes (not same class) to avoid duplicate-bases TypeError
+class WikiQueryRepositoryPort(WikiPageRepository):
+    pass
+
+
+class WikiCommandRepositoryPort(WikiPageRepository):
+    pass

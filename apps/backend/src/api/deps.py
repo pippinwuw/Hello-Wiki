@@ -53,6 +53,14 @@ def get_ingest_compile_handler() -> CompileDocumentHandler:
     return CompileDocumentHandler(use_case=use_case)
 
 
+def get_agent_handler() -> "AgentHandler":
+    return wiring.build_agent_handler()
+
+
+def get_ingest_pipeline_handler() -> "IngestDocumentHandler":
+    return wiring.build_ingest_pipeline_handler()
+
+
 def get_workspace_id(x_workspace_id: str | None = Header(default=None)) -> UUID | None:
     if x_workspace_id is not None:
         parsed = parse_workspace_id(x_workspace_id)

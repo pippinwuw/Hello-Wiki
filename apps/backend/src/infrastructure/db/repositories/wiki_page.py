@@ -30,18 +30,18 @@ class FileSystemWikiPageRepository(WikiPageRepository):
         index_path = self._get_index_path(workspace_id)
         if not os.path.exists(index_path):
             return []
-        with open(index_path, 'r', encoding='utf-8') as f:
+        with open(index_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             return data if isinstance(data, list) else []
 
     def _write_pages(self, workspace_id: UUID, pages: list[dict]) -> None:
         index_path = self._get_index_path(workspace_id)
-        with open(index_path, 'w', encoding='utf-8') as f:
+        with open(index_path, "w", encoding="utf-8") as f:
             json.dump(pages, f, ensure_ascii=False, indent=2, default=str)
 
     def save(self, page: WikiPage) -> UUID:
         pages = self._read_pages(page.workspace_id)
-        
+
         # 查找并更新或添加
         found = False
         for i, p in enumerate(pages):
@@ -56,18 +56,20 @@ class FileSystemWikiPageRepository(WikiPageRepository):
                 }
                 found = True
                 break
-        
+
         if not found:
-            pages.append({
-                "wiki_id": str(page.wiki_id),
-                "title": page.title,
-                "content": page.content,
-                "category": page.category,
-                "summary": page.summary,
-                "created_at": page.created_at.isoformat(),
-                "updated_at": page.updated_at.isoformat(),
-            })
-        
+            pages.append(
+                {
+                    "wiki_id": str(page.wiki_id),
+                    "title": page.title,
+                    "content": page.content,
+                    "category": page.category,
+                    "summary": page.summary,
+                    "created_at": page.created_at.isoformat(),
+                    "updated_at": page.updated_at.isoformat(),
+                }
+            )
+
         self._write_pages(page.workspace_id, pages)
         return page.wiki_id
 
@@ -79,12 +81,14 @@ class FileSystemWikiPageRepository(WikiPageRepository):
         pages_data = self._read_pages(workspace_id)
         result = []
         for p in pages_data:
-            result.append(WikiPage(
-                wiki_id=UUID(p["wiki_id"]),
-                workspace_id=workspace_id,
-                title=p["title"],
-                content=p["content"],
-                category=p.get("category", "general"),
-                summary=p.get("summary", ""),
-            ))
+            result.append(
+                WikiPage(
+                    wiki_id=UUID(p["wiki_id"]),
+                    workspace_id=workspace_id,
+                    title=p["title"],
+                    content=p["content"],
+                    category=p.get("category", "general"),
+                    summary=p.get("summary", ""),
+                )
+            )
         return result
