@@ -8,7 +8,9 @@ export default function WithSidebarLayout({
   return (
     <div className="flex min-h-dvh w-full bg-white">
       <SideBar />
-      <main className="min-h-dvh min-w-0 flex-1 overflow-auto bg-white">{children}</main>
+      <main className="min-h-dvh min-w-0 flex-1 overflow-auto bg-white">
+        {children}
+      </main>
     </div>
   );
 }

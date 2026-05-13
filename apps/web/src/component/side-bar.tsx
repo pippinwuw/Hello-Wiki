@@ -168,8 +168,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "运营管理",
     items: [
       { href: "/ops", label: "运营后台", icon: <OpsIcon /> },
-      { href: "/audit", label: "知识审核", icon: <AuditIcon />,
-      },
+      { href: "/audit", label: "知识审核", icon: <AuditIcon /> },
       { href: "/simulation", label: "模拟测试", icon: <SimulationIcon /> },
     ],
   },
@@ -202,7 +201,9 @@ export default function SideBar() {
           <div className="truncate text-[17px] font-semibold tracking-tight text-zinc-900">
             知原
           </div>
-          <div className="mt-0.5 truncate text-xs text-zinc-400">v2.0 · 编译式 Wiki</div>
+          <div className="mt-0.5 truncate text-xs text-zinc-400">
+            v2.0 · 编译式 Wiki
+          </div>
         </div>
       </div>
 
@@ -235,7 +236,9 @@ export default function SideBar() {
                       >
                         {item.icon}
                       </span>
-                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {item.label}
+                      </span>
                       {item.badge != null && item.badge > 0 ? (
                         <span className="flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold leading-none text-white">
                           {item.badge > 99 ? "99+" : item.badge}
@@ -259,8 +262,12 @@ export default function SideBar() {
             管
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="truncate text-sm font-semibold text-zinc-900">管理员</div>
-            <div className="truncate text-xs text-zinc-400">企业版 · 管理员</div>
+            <div className="truncate text-sm font-semibold text-zinc-900">
+              管理员
+            </div>
+            <div className="truncate text-xs text-zinc-400">
+              企业版 · 管理员
+            </div>
           </div>
           <button
             type="button"
