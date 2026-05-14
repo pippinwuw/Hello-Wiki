@@ -1,4 +1,9 @@
-import SideBar from "@/component/side-bar";
+import SideBar from "@/components/side-bar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 export default function WithSidebarLayout({
   children,
@@ -6,11 +11,14 @@ export default function WithSidebarLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-h-dvh w-full bg-white">
+    <SidebarProvider>
       <SideBar />
-      <main className="min-h-dvh min-w-0 flex-1 overflow-auto bg-white">
-        {children}
-      </main>
-    </div>
+      <SidebarInset className="min-h-dvh bg-background">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3 md:hidden">
+          <SidebarTrigger />
+        </header>
+        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

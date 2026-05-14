@@ -3,14 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { Star } from "lucide-react";
 
-const AUDIT_BADGE_COUNT = 3;
+import { Button } from "@/components/ui/button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 type NavItem = {
   href: string;
   label: string;
   icon: ReactNode;
-  badge?: number;
 };
 
 type NavGroup = {
@@ -22,7 +36,7 @@ const ICON_STROKE = 1.5;
 
 function iconSvgProps() {
   return {
-    className: "h-5 w-5 shrink-0",
+    className: "size-4 shrink-0",
     viewBox: "0 0 24 24",
     fill: "none" as const,
     stroke: "currentColor",
@@ -31,10 +45,6 @@ function iconSvgProps() {
     strokeLinejoin: "round" as const,
     "aria-hidden": true as const,
   };
-}
-
-function iconClassName(active: boolean) {
-  return active ? "text-blue-600" : "text-zinc-900";
 }
 
 function WorkbenchIcon() {
@@ -192,102 +202,83 @@ export default function SideBar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full min-h-screen w-64 shrink-0 flex-col border-r border-zinc-200/80 bg-[#F8F9FA]">
-      <div className="flex items-center gap-3 px-4 pb-6 pt-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-lg font-semibold text-white shadow-sm">
-          知
-        </div>
-        <div className="min-w-0 leading-tight">
-          <div className="truncate text-[17px] font-semibold tracking-tight text-zinc-900">
-            知原
+    <TooltipProvider>
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="gap-3 border-b border-sidebar-border px-3 py-4">
+          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#2563EB] text-lg font-semibold text-white shadow-sm">
+              知
+            </div>
+            <div className="min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
+              <div className="truncate text-[17px] font-semibold tracking-tight">
+                知原
+              </div>
+              <div className="mt-0.5 truncate text-xs text-sidebar-foreground/60">
+                v2.0 · 编译式 Wiki
+              </div>
+            </div>
           </div>
-          <div className="mt-0.5 truncate text-xs text-zinc-400">
-            v2.0 · 编译式 Wiki
-          </div>
-        </div>
-      </div>
+        </SidebarHeader>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-3 pb-4">
-        {NAV_GROUPS.map((group) => (
-          <div key={group.title}>
-            <div className="px-3 pb-2 text-[11px] font-medium uppercase tracking-wider text-zinc-400">
-              {group.title}
-            </div>
-            <ul className="flex flex-col gap-0.5">
-              {group.items.map((item) => {
-                const active = isActivePath(pathname, item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={[
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                        active
-                          ? "bg-blue-50 text-blue-600"
-                          : "text-zinc-600 hover:bg-zinc-100/90",
-                      ].join(" ")}
-                    >
-                      <span
-                        className={[
-                          "flex shrink-0 items-center justify-center",
-                          iconClassName(active),
-                        ].join(" ")}
-                        aria-hidden
-                      >
-                        {item.icon}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">
-                        {item.label}
-                      </span>
-                      {item.badge != null && item.badge > 0 ? (
-                        <span className="flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold leading-none text-white">
-                          {item.badge > 99 ? "99+" : item.badge}
-                        </span>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </nav>
+        <SidebarContent className="gap-0 px-1 py-3">
+          {NAV_GROUPS.map((group) => (
+            <SidebarGroup key={group.title} className="p-0">
+              <SidebarGroupLabel className="px-3 text-[11px] uppercase tracking-wider text-sidebar-foreground/50">
+                {group.title}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => {
+                    const active = isActivePath(pathname, item.href);
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          tooltip={item.label}
+                          className="h-10 px-3"
+                        >
+                          <Link href={item.href}>
+                            {item.icon}
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
+        </SidebarContent>
 
-      <div className="mt-auto border-t border-zinc-200/90 px-3 py-4">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-medium text-white"
-            aria-hidden
-          >
-            管
-          </div>
-          <div className="min-w-0 flex-1 leading-tight">
-            <div className="truncate text-sm font-semibold text-zinc-900">
-              管理员
-            </div>
-            <div className="truncate text-xs text-zinc-400">
-              企业版 · 管理员
-            </div>
-          </div>
-          <button
-            type="button"
-            className="shrink-0 rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-200/80 hover:text-zinc-600"
-            aria-label="账户菜单"
-          >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
+        <SidebarFooter className="border-t border-sidebar-border">
+          <div className="flex items-center gap-3 rounded-lg px-2 py-2 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-2">
+            <div
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#2563EB] text-sm font-medium text-white"
               aria-hidden
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={ICON_STROKE}
-              strokeLinejoin="round"
             >
-              <path d="M12 3l2.38 4.83 5.33.77-3.86 3.76.91 5.31L12 15.96l-4.76 2.71.91-5.31L4.29 8.6l5.33-.77L12 3z" />
-            </svg>
-          </button>
-        </div>
-      </div>
-    </aside>
+              管
+            </div>
+            <div className="min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
+              <div className="truncate text-sm font-semibold">管理员</div>
+              <div className="truncate text-xs text-sidebar-foreground/60">
+                企业版 · 管理员
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8"
+              aria-label="账户菜单"
+            >
+              <Star className="size-4" />
+            </Button>
+          </div>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+    </TooltipProvider>
   );
 }
