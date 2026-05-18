@@ -10,7 +10,7 @@ def to_compile_document_command(
     workspace_id: UUID,
 ) -> CompileDocumentCommand:
     return CompileDocumentCommand(
-        workspace_id=workspace_id,
+        workspace_id=str(workspace_id),
         source_document_id=request.source_document_id,
         title=request.title,
         markdown_content=request.markdown_content,

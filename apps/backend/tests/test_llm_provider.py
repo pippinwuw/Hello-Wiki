@@ -16,9 +16,7 @@ class _TestSchema(BaseModel):
 
 
 class TestOpenAICompatibleProvider:
-    @pytest.mark.skipif(
-        not settings.LLM_API_KEY, reason="LLM_API_KEY not configured"
-    )
+    @pytest.mark.skipif(not settings.LLM_API_KEY, reason="LLM_API_KEY not configured")
     async def test_generate_returns_string(self) -> None:
         provider = OpenAICompatibleProvider(temperature=0.0)
         messages = [{"role": "user", "content": "Say 'hello' in exactly one word."}]
@@ -26,9 +24,7 @@ class TestOpenAICompatibleProvider:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    @pytest.mark.skipif(
-        not settings.LLM_API_KEY, reason="LLM_API_KEY not configured"
-    )
+    @pytest.mark.skipif(not settings.LLM_API_KEY, reason="LLM_API_KEY not configured")
     async def test_generate_structured_returns_valid_object(self) -> None:
         provider = OpenAICompatibleProvider(temperature=0.0)
         result = await provider.generate_structured(

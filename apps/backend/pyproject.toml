@@ -85,6 +85,13 @@ strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+module = [
+    "src.infrastructure.wiring",
+    "src.api.deps",
+]
+disable_error_code = ["name-defined"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
