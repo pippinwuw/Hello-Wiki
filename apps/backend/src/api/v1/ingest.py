@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from src.api.deps import get_ingest_compile_handler, get_ingest_pipeline_handler, get_workspace_id
 from src.api.schemas.ingest import (
@@ -48,7 +48,10 @@ async def ingest_upload(
     domain: str = Form(default="general"),
     handler: IngestDocumentHandler = Depends(get_ingest_pipeline_handler),
 ) -> IngestUploadResponse:
-    import uuid, tempfile, os, asyncio
+    import asyncio
+    import os
+    import tempfile
+    import uuid
 
     task_id = str(uuid.uuid4())
     TASK_STATUS[task_id] = {"status": "pending", "total_chunks": 0, "successful": 0, "failed": 0}

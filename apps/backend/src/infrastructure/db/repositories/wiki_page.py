@@ -5,7 +5,7 @@ Wiki 页面仓库实现
 
 import json
 import os
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from src.domain.wiki.entities import WikiPage
@@ -30,7 +30,7 @@ class FileSystemWikiPageRepository(WikiPageRepository):
         index_path = self._get_index_path(workspace_id)
         if not os.path.exists(index_path):
             return []
-        with open(index_path, "r", encoding="utf-8") as f:
+        with open(index_path, encoding="utf-8") as f:
             data = json.load(f)
             return data if isinstance(data, list) else []
 
@@ -73,7 +73,7 @@ class FileSystemWikiPageRepository(WikiPageRepository):
         self._write_pages(page.workspace_id, pages)
         return page.wiki_id
 
-    def get_by_id(self, wiki_id: UUID) -> Optional[WikiPage]:
+    def get_by_id(self, wiki_id: UUID) -> WikiPage | None:
         # 需要遍历所有 workspace，简化实现
         return None
 

@@ -55,11 +55,11 @@ def get_ingest_compile_handler() -> CompileDocumentHandler:
     return CompileDocumentHandler(use_case=use_case)
 
 
-def get_agent_handler() -> "AgentHandler":  # type: ignore[name-defined]
+def get_agent_handler() -> AgentHandler:  # noqa: F821  # type: ignore
     return wiring.build_agent_handler()
 
 
-def get_ingest_pipeline_handler() -> "IngestDocumentHandler":  # type: ignore[name-defined]
+def get_ingest_pipeline_handler() -> IngestDocumentHandler:  # noqa: F821  # type: ignore
     return wiring.build_ingest_pipeline_handler()
 
 

@@ -1,6 +1,6 @@
 """Ingest pipeline use case — 3-step orchestrator."""
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from src.application.ingest.commands import IngestDocumentCommand
 from src.domain.ai.provider import LLMProviderPort
@@ -12,7 +12,6 @@ from src.domain.knowledge.entities import (
     Tag,
 )
 from src.domain.knowledge.repository import KnowledgeRepositoryPort
-from src.domain.knowledge.value_objects import EventType
 from src.infrastructure.ai.extraction_adapter import StructuredExtractionAdapter
 from src.infrastructure.parser.chunker import RecursiveChunker
 from src.infrastructure.parser.document_loader import DocumentLoaderAdapter

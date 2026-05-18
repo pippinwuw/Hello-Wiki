@@ -41,7 +41,8 @@ class InitTagsHandler:
                 for leaf in category.leaves:
                     leaf_path = f"{category.name}.{leaf.name}"
                     await conn.execute(
-                        "INSERT INTO tags (name, label, description, parent_id, level, path, is_leaf) "
+                        "INSERT INTO tags (name, label, description, "
+                        "parent_id, level, path, is_leaf) "
                         "VALUES ($1, $2, $3, $4, 1, $5::ltree, true) "
                         "ON CONFLICT (path) DO NOTHING",
                         leaf.name,

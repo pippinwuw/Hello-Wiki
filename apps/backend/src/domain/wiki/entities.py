@@ -5,9 +5,8 @@ Wiki 领域实体
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
-from uuid import UUID, uuid4
 from enum import StrEnum
+from uuid import UUID, uuid4
 
 
 class WikiStatus(StrEnum):
@@ -50,7 +49,7 @@ class WikiPage:
     parse_references: list[WikiParseReference] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
-    created_by: Optional[str] = None
+    created_by: str | None = None
 
     def update_content(self, new_content: str) -> None:
         self.content = new_content
@@ -67,7 +66,7 @@ class WikiPage:
         title: str,
         category: str = "general",
         content: str = "",
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> "WikiPage":
         return cls(
             wiki_id=uuid4(),

@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from src.api.deps import get_workspace_id
 
-
 # ========== Request/Response Schemas ==========
 
 
@@ -78,7 +77,7 @@ def read_pages(workspace_id: UUID) -> list[dict[str, Any]]:
     index_path = get_index_path(workspace_id)
     if not os.path.exists(index_path):
         return []
-    with open(index_path, "r", encoding="utf-8") as f:
+    with open(index_path, encoding="utf-8") as f:
         data = json.load(f)
         if isinstance(data, list):
             return data

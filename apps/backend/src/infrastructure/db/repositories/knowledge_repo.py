@@ -8,7 +8,6 @@ import asyncpg
 from src.core.config import settings
 from src.domain.knowledge.entities import Page, PageTag, PageTimeline, PageVersion, RawChunk, Tag
 from src.domain.knowledge.repository import KnowledgeRepositoryPort
-from src.infrastructure.db.repositories.tag_serializer import TagRow, serialize_tag_tree
 
 
 def _dsn() -> str:
@@ -197,8 +196,11 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
             close = True
         try:
             for pt in page_tags:
+                sql = (
+                    "INSERT INTO page_tags (page_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
+                )
                 await conn.execute(
-                    "INSERT INTO page_tags (page_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                    sql,
                     pt.page_id,
                     pt.tag_id,
                 )

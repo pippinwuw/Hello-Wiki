@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from pydantic import BaseModel, Field
-from langchain_core.messages import SystemMessage, HumanMessage
 
 from src.domain.ai.provider import LLMProviderPort
 

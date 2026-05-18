@@ -32,7 +32,7 @@ def build_llm_provider() -> LLMProviderPort:
     )
 
 
-def build_init_tags_handler() -> "InitTagsHandler":  # type: ignore[name-defined]
+def build_init_tags_handler() -> InitTagsHandler:  # noqa: F821  # type: ignore
     from src.application.init.handlers import InitTagsHandler
     from src.application.init.init_tags import InitTagsUseCase
 
@@ -41,7 +41,7 @@ def build_init_tags_handler() -> "InitTagsHandler":  # type: ignore[name-defined
     return InitTagsHandler(use_case)
 
 
-def build_agent_loop() -> "AgentLoop":  # type: ignore[name-defined]
+def build_agent_loop() -> AgentLoop:  # noqa: F821  # type: ignore
     from src.application.agent.agent_loop import AgentLoop
     from src.application.agent.tools.init_tags_tool import create_init_tags_tool
 
@@ -51,13 +51,13 @@ def build_agent_loop() -> "AgentLoop":  # type: ignore[name-defined]
     return AgentLoop(provider=provider, tools=tools)
 
 
-def build_agent_handler() -> "AgentHandler":  # type: ignore[name-defined]
+def build_agent_handler() -> AgentHandler:  # noqa: F821  # type: ignore
     from src.application.agent.handlers import AgentHandler
 
     return AgentHandler(build_agent_loop())
 
 
-def build_ingest_pipeline() -> "IngestPipelineUseCase":  # type: ignore[name-defined]
+def build_ingest_pipeline() -> IngestPipelineUseCase:  # noqa: F821  # type: ignore
     from src.application.ingest.pipeline import IngestPipelineUseCase
     from src.infrastructure.db.repositories.knowledge_repo import KnowledgeAsyncRepository
 
@@ -66,7 +66,7 @@ def build_ingest_pipeline() -> "IngestPipelineUseCase":  # type: ignore[name-def
     return IngestPipelineUseCase(provider=provider, repository=repository)
 
 
-def build_ingest_pipeline_handler() -> "IngestDocumentHandler":  # type: ignore[name-defined]
+def build_ingest_pipeline_handler() -> IngestDocumentHandler:  # noqa: F821  # type: ignore
     from src.application.ingest.handlers import IngestDocumentHandler
 
     return IngestDocumentHandler(build_ingest_pipeline())

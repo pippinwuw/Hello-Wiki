@@ -3,7 +3,6 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    UUID,
     Boolean,
     CheckConstraint,
     Column,
@@ -16,10 +15,10 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSTZRANGE, TSVECTOR, UUID as PG_UUID
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.dialects.postgresql import JSONB, TSTZRANGE, TSVECTOR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):

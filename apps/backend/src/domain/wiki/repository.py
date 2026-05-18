@@ -4,7 +4,6 @@ Wiki 页面仓库接口
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
 from uuid import UUID
 
 from src.domain.wiki.entities import WikiPage
@@ -18,7 +17,7 @@ class WikiPageRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, wiki_id: UUID) -> Optional[WikiPage]:
+    def get_by_id(self, wiki_id: UUID) -> WikiPage | None:
         pass
 
     @abstractmethod
