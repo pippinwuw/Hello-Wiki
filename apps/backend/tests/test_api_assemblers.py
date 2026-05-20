@@ -45,18 +45,18 @@ def test_ingest_assemblers_map_request_and_response() -> None:
         markdown_content="content",
         category="general",
     )
-    page = SimpleNamespace(title="Doc", status=WikiStatus.DRAFT, facts=[object(), object()])
+    page = SimpleNamespace(title="Doc", status=WikiStatus.ACTIVE, facts=[object(), object()])
 
     command = to_compile_document_command(request, workspace_id)
     response = to_compile_response(page)
 
-    assert command.workspace_id == workspace_id
+    assert command.workspace_id == str(workspace_id)
     assert command.source_document_id == "doc-1"
     assert command.title == "Doc"
     assert command.markdown_content == "content"
     assert command.category == "general"
     assert response.title == "Doc"
-    assert response.status == "DRAFT"
+    assert response.status == "active"
     assert response.fact_count == 2
 
 
@@ -69,7 +69,7 @@ def test_wiki_assemblers_map_commands_queries_and_responses() -> None:
         content="C",
         source_doc_id="doc-9",
     )
-    page = SimpleNamespace(title="T", category="general", summary="S", status=WikiStatus.PUBLISHED)
+    page = SimpleNamespace(title="T", category="general", summary="S", status=WikiStatus.ACTIVE)
 
     command = to_upsert_wiki_command(request, workspace_id)
     list_query = to_list_wiki_query(workspace_id)
@@ -85,6 +85,6 @@ def test_wiki_assemblers_map_commands_queries_and_responses() -> None:
     assert search_query.keyword == "k"
     assert search_query.top_k == 4
     assert response.title == "T"
-    assert response.status == "PUBLISHED"
+    assert response.status == "active"
     assert len(list_response.items) == 1
     assert list_response.items[0].title == "T"

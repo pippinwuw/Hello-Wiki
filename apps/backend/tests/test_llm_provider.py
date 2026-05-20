@@ -28,7 +28,12 @@ class TestOpenAICompatibleProvider:
     async def test_generate_structured_returns_valid_object(self) -> None:
         provider = OpenAICompatibleProvider(temperature=0.0)
         result = await provider.generate_structured(
-            [{"role": "user", "content": "Return name=test, score=0.95, tags=['a','b']"}],
+            [
+                {
+                    "role": "user",
+                    "content": "Return JSON: name=test, score=0.95, tags=['a','b'], metadata={}",
+                }
+            ],
             _TestSchema,
         )
         assert isinstance(result, _TestSchema)
