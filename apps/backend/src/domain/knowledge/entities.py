@@ -115,5 +115,17 @@ class Page:
     updated_at: datetime = field(default_factory=datetime.now)
 
     @classmethod
-    def create(cls, raw_id: UUID, compiled_truth: str, title: str | None = None) -> "Page":
-        return cls(id=uuid4(), raw_id=raw_id, compiled_truth=compiled_truth, title=title)
+    def create(
+        cls,
+        raw_id: UUID,
+        compiled_truth: str,
+        title: str | None = None,
+        effective_range: tuple[datetime | None, datetime | None] | None = None,
+    ) -> "Page":
+        return cls(
+            id=uuid4(),
+            raw_id=raw_id,
+            compiled_truth=compiled_truth,
+            title=title,
+            effective_range=effective_range,
+        )

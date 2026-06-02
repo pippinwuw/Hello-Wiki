@@ -1,11 +1,11 @@
-from pathlib import Path
-from typing import Any
+import asyncio
+import json
+from urllib import error, request
 
-import yaml
 from pydantic import BaseModel, Field
 
 from src.application.init.commands import InitTagsCommand
-from src.domain.ai.provider import LLMProviderPort
+from src.core.config import settings
 
 
 class LeafTag(BaseModel):
@@ -28,43 +28,53 @@ class TagTreeSchema(BaseModel):
 
 
 class InitTagsUseCase:
-    """Generate the initial domain tag hierarchy by calling the LLM with the
-    tag-initialize skill's domain-specific prompt."""
+    """Generate initial tags through the TypeScript ingest-ai LLM gateway.
 
-    SKILLS_BASE = Path("apps/skills/tag-initialize/references")
+    The Python workflow remains responsible for orchestration and persistence;
+    the LLM prompt/context is owned by the TS service and can be discarded.
+    """
 
-    def __init__(self, provider: LLMProviderPort) -> None:
-        self._provider = provider
+    def __init__(self, base_url: str | None = None, timeout_seconds: float | None = None) -> None:
+        self._base_url = (base_url or settings.INGEST_AI_BASE_URL).rstrip("/")
+        self._timeout_seconds = timeout_seconds or settings.INGEST_AI_TIMEOUT_SECONDS
 
     async def execute(self, command: InitTagsCommand) -> TagTreeSchema:
-        index = self._load_index()
-        ref = self._resolve_reference(index, command.domain)
-        prompt = self._load_prompt(ref["prompt"])
-        system_prompt = (
-            prompt.replace("{domain}", command.domain)
-            .replace("{description}", command.description)
-            .replace("{language}", command.language)
-            .replace("{existing_tags}", "[]")
+        payload = {
+            "domain": command.domain,
+            "description": command.description,
+            "language": command.language,
+            "existingTags": [],
+        }
+        raw_output = await asyncio.to_thread(self._post_init_tags, payload)
+        try:
+            response = json.loads(raw_output)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("ingest-ai init-tags gateway returned invalid JSON") from exc
+        return TagTreeSchema.model_validate(response)
+
+    def _post_init_tags(self, payload: dict[str, object]) -> str:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        http_request = request.Request(
+            f"{self._base_url}/init-tags",
+            data=body,
+            headers={"content-type": "application/json"},
+            method="POST",
         )
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": command.description},
-        ]
-        return await self._provider.generate_structured(messages, TagTreeSchema)
+        try:
+            with request.urlopen(http_request, timeout=self._timeout_seconds) as response:
+                return response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(_error_message(response_body) or str(exc)) from exc
+        except error.URLError as exc:
+            raise RuntimeError(f"ingest-ai init-tags gateway request failed: {exc.reason}") from exc
 
-    def _load_index(self) -> dict[str, Any]:
-        index_path = self.SKILLS_BASE / "index.yaml"
-        with open(index_path, encoding="utf-8") as f:
-            return yaml.safe_load(f)  # type: ignore[no-any-return]
 
-    def _resolve_reference(self, index: dict[str, Any], domain: str) -> dict[str, Any]:
-        for ref in index["references"]:
-            if ref["id"] == domain:
-                return ref  # type: ignore[no-any-return]
-        fallback = next(r for r in index["references"] if r.get("default"))
-        return fallback  # type: ignore[no-any-return]
-
-    def _load_prompt(self, prompt_path: str) -> str:
-        full_path = self.SKILLS_BASE / prompt_path
-        with open(full_path, encoding="utf-8") as f:
-            return f.read()
+def _error_message(response_body: str) -> str:
+    try:
+        payload = json.loads(response_body)
+    except json.JSONDecodeError:
+        return response_body
+    if isinstance(payload, dict) and isinstance(payload.get("error"), str):
+        return payload["error"]
+    return response_body

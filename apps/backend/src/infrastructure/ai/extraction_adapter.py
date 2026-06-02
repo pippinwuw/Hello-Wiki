@@ -1,8 +1,10 @@
-from pathlib import Path
+import asyncio
+import json
+from urllib import error, request
 
 from pydantic import BaseModel, Field
 
-from src.domain.ai.provider import LLMProviderPort
+from src.core.config import settings
 
 
 class SuggestedTag(BaseModel):
@@ -29,32 +31,12 @@ class ExtractedKnowledge(BaseModel):
     effective_range: EffectiveRange
 
 
-SKILLS_BASE = Path(__file__).resolve().parents[4] / "skills" / "knowledge-extraction" / "references"
+class TsExtractionAdapter:
+    """Adapter that delegates chunk extraction to the TypeScript pi-ai HTTP gateway."""
 
-
-class SkillPromptLoader:
-    """Loads domain-specific prompt from the knowledge-extraction skill."""
-
-    @staticmethod
-    def load(domain: str) -> str:
-        index_path = SKILLS_BASE / "index.yaml"
-        import yaml
-
-        with open(index_path, encoding="utf-8") as f:
-            index = yaml.safe_load(f)
-        ref = next((r for r in index["references"] if r["id"] == domain), None)
-        if ref is None:
-            ref = next(r for r in index["references"] if r.get("default"))
-        prompt_path = SKILLS_BASE / ref["prompt"]
-        with open(prompt_path, encoding="utf-8") as f:
-            return f.read()
-
-
-class StructuredExtractionAdapter:
-    """Two-message LLM extraction: system prompt (rules) + user prompt (tag tree + chunk text)."""
-
-    def __init__(self, provider: LLMProviderPort) -> None:
-        self._provider = provider
+    def __init__(self, base_url: str | None = None, timeout_seconds: float | None = None) -> None:
+        self._base_url = (base_url or settings.INGEST_AI_BASE_URL).rstrip("/")
+        self._timeout_seconds = timeout_seconds or settings.INGEST_AI_TIMEOUT_SECONDS
 
     async def extract(
         self,
@@ -66,16 +48,45 @@ class StructuredExtractionAdapter:
         chunk_index: int = 0,
         total_chunks: int = 1,
     ) -> ExtractedKnowledge:
-        system_prompt = SkillPromptLoader.load(domain)
-        system_prompt = (
-            system_prompt.replace("{source_document}", source_document)
-            .replace("{source_page}", source_page)
-            .replace("{chunk_index}", str(chunk_index))
-            .replace("{total_chunks}", str(total_chunks))
+        request = {
+            "domain": domain,
+            "chunkText": chunk_text,
+            "tagTree": tag_tree,
+            "sourceDocument": source_document,
+            "sourcePage": source_page,
+            "chunkIndex": chunk_index,
+            "totalChunks": total_chunks,
+        }
+        raw_output = await asyncio.to_thread(self._post_extract, request)
+        try:
+            payload = json.loads(raw_output)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("ingest-ai HTTP gateway returned invalid JSON") from exc
+        return ExtractedKnowledge.model_validate(payload)
+
+    def _post_extract(self, payload: dict[str, object]) -> str:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        http_request = request.Request(
+            f"{self._base_url}/extract",
+            data=body,
+            headers={"content-type": "application/json"},
+            method="POST",
         )
-        user_prompt = f"AVAILABLE TAGS\n{tag_tree}\n\nTEXT TO ANALYZE\n{chunk_text}"
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-        return await self._provider.generate_structured(messages, ExtractedKnowledge)
+        try:
+            with request.urlopen(http_request, timeout=self._timeout_seconds) as response:
+                return response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(_error_message(response_body) or str(exc)) from exc
+        except error.URLError as exc:
+            raise RuntimeError(f"ingest-ai HTTP gateway request failed: {exc.reason}") from exc
+
+
+def _error_message(response_body: str) -> str:
+    try:
+        payload = json.loads(response_body)
+    except json.JSONDecodeError:
+        return response_body
+    if isinstance(payload, dict) and isinstance(payload.get("error"), str):
+        return payload["error"]
+    return response_body

@@ -1,43 +1,59 @@
-from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.tools import BaseTool
+import asyncio
+import json
+from urllib import error, request
 
 from src.application.agent.commands import AgentCommand
-from src.domain.ai.provider import LLMProviderPort
-
-SYSTEM_PROMPT = """\
-你是 Hello-Wiki 的知识库管理助手。你可以通过工具调用来帮助用户管理知识库。
-
-你的职责:
-- 初始化知识库标签体系 (init_tags)
-- 导入文档并提取结构化知识 (ingest_document, 待实现)
-- 回答关于知识库内容的问题 (search_knowledge, 待实现)
-
-规则:
-- 用户说"初始化标签"或"创建知识库"时,调用 init_tags
-- 先询问用户知识库的领域和内容描述,再调用工具
-- 工具返回结果后,用中文向用户总结
-- 如果用户请求的功能尚未实现,如实告知
-"""
+from src.core.config import settings
 
 
 class AgentLoop:
-    """Main agent loop wrapping a LangChain create_agent graph."""
+    """Adapter that delegates agent chat to the TypeScript pi-agent-core service."""
 
-    def __init__(self, provider: LLMProviderPort, tools: list[BaseTool]) -> None:
-        llm = provider.as_runnable()
-        self._agent = create_agent(llm, tools, system_prompt=SYSTEM_PROMPT)  # type: ignore[arg-type]
+    def __init__(self, base_url: str | None = None, timeout_seconds: float | None = None) -> None:
+        self._base_url = (base_url or settings.AGENT_AI_BASE_URL).rstrip("/")
+        self._timeout_seconds = timeout_seconds or settings.AGENT_AI_TIMEOUT_SECONDS
 
     async def run(self, command: AgentCommand) -> str:
-        messages: list[BaseMessage] = []
-        for h in command.chat_history or []:
-            role = h.get("role", "")
-            content = h.get("content", "")
-            if role == "assistant":
-                messages.append(AIMessage(content=content))
-            else:
-                messages.append(HumanMessage(content=content))
-        messages.append(HumanMessage(content=command.user_input))
-        result = await self._agent.ainvoke({"messages": messages})  # type: ignore[call-overload]
-        last = result["messages"][-1]
-        return str(last.content)
+        payload = {
+            "message": command.user_input,
+            "workspaceId": command.workspace_id,
+            "sessionId": command.session_id,
+            "history": command.chat_history or [],
+        }
+        raw_output = await asyncio.to_thread(self._post_chat, payload)
+        try:
+            response = json.loads(raw_output)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("agent-ai HTTP gateway returned invalid JSON") from exc
+
+        reply = response.get("reply") if isinstance(response, dict) else None
+        if not isinstance(reply, str):
+            raise RuntimeError("agent-ai HTTP gateway returned invalid reply")
+        return reply
+
+    def _post_chat(self, payload: dict[str, object]) -> str:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        http_request = request.Request(
+            f"{self._base_url}/agent/chat",
+            data=body,
+            headers={"content-type": "application/json"},
+            method="POST",
+        )
+        try:
+            with request.urlopen(http_request, timeout=self._timeout_seconds) as response:
+                return response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(_error_message(response_body) or str(exc)) from exc
+        except error.URLError as exc:
+            raise RuntimeError(f"agent-ai HTTP gateway request failed: {exc.reason}") from exc
+
+
+def _error_message(response_body: str) -> str:
+    try:
+        payload = json.loads(response_body)
+    except json.JSONDecodeError:
+        return response_body
+    if isinstance(payload, dict) and isinstance(payload.get("error"), str):
+        return payload["error"]
+    return response_body

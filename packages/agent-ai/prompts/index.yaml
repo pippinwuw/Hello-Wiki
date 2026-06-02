@@ -1,0 +1,22 @@
+# Built-in operational prompts for agent-ai (not user-customizable skills).
+# User/domain prompts live under apps/skills/ and are loaded via ingest/skill-loader.ts.
+
+prompts:
+  - id: agent.main
+    system: agent/main.system.md
+
+  - id: retrieve.judge_round
+    system: retrieve/judge-round.system.md
+    user: retrieve/judge-round.user.md
+
+  - id: retrieve.judge_relevance
+    system: retrieve/judge-relevance.system.md
+    user: retrieve/judge-relevance.user.md
+
+  - id: retrieve.judge_sufficiency
+    system: retrieve/judge-sufficiency.system.md
+    user: retrieve/judge-sufficiency.user.md
+
+  - id: retrieve.build_answer
+    system: retrieve/build-answer.system.md
+    user: retrieve/build-answer.user.md

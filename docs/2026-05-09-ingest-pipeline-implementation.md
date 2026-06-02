@@ -130,8 +130,10 @@ cd D:\python_code\Alchemy5\Hello-Wiki
 # 2. 确认 .env 存在且 LLM_API_KEY 已配置
 cat .env | grep LLM_API_KEY
 
-# 3. 启动 (python 在 conda hw-wiki 环境中)
-python apps\backend\run_agent.py
+# 3. 启动 TS 网关和后端 (python 在 conda hw-wiki 环境中)
+pnpm serve:agent-ai
+pnpm serve:ingest-ai
+python apps\backend\run.py
 
 # 4. 验证
 #   浏览器访问 http://localhost:8000/docs → Swagger UI
@@ -157,18 +159,14 @@ python apps\backend\run_agent.py
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  POST /agent/chat                                            │
+│  POST /api/v1/agent/chat                                     │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ AgentLoop (LangChain create_agent)                   │   │
-│  │   ├── SYSTEM_PROMPT (预设规则)                        │   │
-│  │   └── Tools: [init_tags]                             │   │
-│  │        └── InitTagsHandler → InitTagsUseCase          │   │
-│  │             ├── 加载 tag-initialize skill prompt.md   │   │
-│  │             └── LLM generate_structured()              │   │
-│  │                  └── TagTreeSchema → PostgreSQL       │   │
+│  │ Python AgentLoop adapter                             │   │
+│  │   └── packages/agent-ai HTTP service                  │   │
+│  │        └── pi-agent-core Agent Loop                   │   │
 │  └──────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
-│  POST /ingest/upload                                         │
+│  POST /api/v1/ingest/upload                                  │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │ IngestPipelineUseCase (3-step pipeline)              │   │
 │  │                                                      │   │
@@ -181,8 +179,8 @@ python apps\backend\run_agent.py
 │  │                                                      │   │
 │  │  Step 3: For each chunk →                            │   │
 │  │    a. serialize_tag_tree() → indented text            │   │
-│  │    b. SystemMessage(prompt.md) + HumanMessage(tags)   │   │
-│  │    c. LLM with_structured_output(ExtractedKnowledge)  │   │
+│  │    b. TsExtractionAdapter → HTTP packages/ingest-ai    │   │
+│  │    c. pi-ai tool call emit_extracted_knowledge         │   │
 │  │    d. Transactional write:                           │   │
 │  │       raw_chunks → pages → tags/page_tags →          │   │
 │  │       page_timeline → page_versions                  │   │
@@ -242,15 +240,12 @@ infrastructure/ai/providers/
 ### 2. Agent Loop (`application/agent/`)
 
 ```
-agent_loop.py           ← AgentLoop (LangChain create_agent)
+agent_loop.py           ← AgentLoop HTTP adapter → packages/agent-ai
 commands.py             ← AgentCommand
 handlers.py             ← AgentHandler
-tools/
-  ├── init_tags_tool.py ← LangChain @tool 包装 InitTagsHandler
-  └── ingest_tool.py    ← 预留 (ingest 走 REST API，不走 agent tool)
 ```
 
-**System Prompt**: 定义为 Hello-Wiki 知识库管理助手，支持初始化标签、导入文档、检索问答。根据用户意图自动调用 tool。
+**System Prompt**: 定义在 `packages/agent-ai`，Agent 可引导用户使用已注册的 init/ingest 专门接口。Ingest 仍是独立工作流，不作为 Agent Loop 主体。
 
 ### 3. 标签初始化 (`application/init/`)
 
@@ -304,7 +299,7 @@ Step 3: Per-chunk Extraction + Persistence (事务性)
 
 **错误处理**: 单个 chunk 失败不影响其他 chunk, 返回 `{total_chunks, successful, failed, errors}`。
 
-### 5. 提取适配器 (`infrastructure/ai/extraction_adapter.py`)
+### 5. 提取适配器 (`infrastructure/ai/extraction_adapter.py` + `packages/ingest-ai`)
 
 ```
 ExtractedKnowledge (Pydantic, 5 字段):
@@ -314,11 +309,15 @@ ExtractedKnowledge (Pydantic, 5 字段):
   suggested_tags: list[SuggestedTag] = Field(min_length=2, max_length=6)
   effective_range: EffectiveRange
 
-SkillPromptLoader:
-  load(domain) → 读取 knowledge-extraction references/{domain}/prompt.md
+TsExtractionAdapter:
+  extract(domain, chunk_text, tag_tree, ...) → HTTP gateway → ExtractedKnowledge
 
-StructuredExtractionAdapter:
-  extract(domain, chunk_text, tag_tree, ...) → ExtractedKnowledge
+packages/ingest-ai:
+  skill-loader.ts      → 读取 knowledge-extraction references/{domain}/prompt.md
+  context-builder.ts   → 构建 pi-ai Context
+  extract-knowledge.ts → validateToolCall(emit_extracted_knowledge)
+  server.ts            → GET /health + POST /extract HTTP 边界
+  cli.ts               → 手动调试入口
 ```
 
 ### 6. 解析器 (`infrastructure/parser/`)
@@ -416,11 +415,11 @@ skills/
 
 | 方法 | 路径 | 说明 | 状态 |
 |---|---|---|---|
-| POST | `/agent/chat` | Agent 对话 | ✅ |
-| POST | `/init/tags` | LLM 生成标签体系 | ✅ |
-| POST | `/ingest/upload` | 文件上传+知识提取 | ✅ |
-| GET | `/ingest/status/{id}` | 导入进度查询 | ✅ |
-| GET | `/api/health` | 健康检查 | ✅ |
+| POST | `/api/v1/agent/chat` | Agent 对话 | ✅ |
+| POST | `/api/v1/init/tags` | LLM 生成标签体系 | ✅ |
+| POST | `/api/v1/ingest/upload` | 文件上传+知识提取 | ✅ |
+| GET | `/api/v1/ingest/status/{id}` | 导入进度查询 | ✅ |
+| GET | `/health` | 健康检查 | ✅ |
 | GET | `/api/wiki` | Wiki 查询 | ⚠️ 501 |
 | POST | `/api/compile` | 文档编译 | ⚠️ 501 |
 | POST | `/api/qa` | 问答 | ⚠️ 501 |
@@ -429,7 +428,7 @@ skills/
 
 **初始化标签**:
 ```bash
-curl -X POST http://localhost:8000/init/tags \
+curl -X POST http://localhost:8000/api/v1/init/tags \
   -H "Content-Type: application/json" \
   -d '{"domain": "university_policy", "description": "中国高校行政管理制度知识库"}'
 # → {"domain": "university_policy", "categories": 8, "leaves": 110}
@@ -437,12 +436,13 @@ curl -X POST http://localhost:8000/init/tags \
 
 **导入文档**:
 ```bash
-curl -X POST http://localhost:8000/ingest/upload \
+curl -X POST http://localhost:8000/api/v1/ingest/upload \
+  -H "X-Workspace-ID: 00000000-0000-0000-0000-000000000001" \
   -F "file=@选课管理办法.pdf" \
   -F "domain=university_policy"
 # → {"task_id": "...", "filename": "选课管理办法.pdf"}
 
-curl http://localhost:8000/ingest/status/{task_id}
+curl http://localhost:8000/api/v1/ingest/status/{task_id}
 # → {"status": "completed", "total_chunks": 1, "successful": 1, "failed": 0}
 ```
 
@@ -480,10 +480,10 @@ langchain-text-splitters>=0.3.0
 
 | 决策 | 选择 | 理由 |
 |---|---|---|
-| LLM 框架 | LangChain | 成熟的 loader/splitter/agent 生态 |
+| Ingest 模型网关 | TypeScript `packages/ingest-ai` + `@earendil-works/pi-ai` | 与后续 TS agent/UI 模型调用方向统一 |
 | DB 驱动 | asyncpg (直接) | 简单、可控，MVP 不过度架构 |
 | 结构化输出 | `json_mode` | DeepSeek 不支持 `json_schema` |
-| Agent 引擎 | `create_agent` (LangGraph) | LangChain 1.x 标准 API |
+| Agent 引擎 | TypeScript `packages/agent-ai` + `@earendil-works/pi-agent-core` | 与 TS 模型网关方向统一，并与 ingest 独立工作流解耦 |
 | Prompt 注入 | `str.replace()` | 避免 `str.format()` 与 JSON `{}` 冲突 |
 | 标签树序列化 | `level * 2` 缩进 | 不依赖深度，LLM 自然理解 |
 | Thinking mode | `extra_body` 禁用 | DeepSeek 特有错误 |
@@ -492,7 +492,7 @@ langchain-text-splitters>=0.3.0
 
 ## 已知限制
 
-1. **`main.py` 无法启动**: 旧模块 (`application/chat/compile_workflow.py`) 引用了不存在的 `WikiCommandRepositoryPort`。临时入口为 `run_agent.py`（自包含构建），需后续整合。
+1. **Agent 不直接执行 ingest**: ingest 是独立工作流，Agent 当前只引导用户调用 `/api/v1/ingest/upload`。
 2. **扫描件 PDF**: `PyPDFLoader` 无法提取文字，需接入 OCR（项目已有 `mineru_client.py` stub）。
 3. **Embedding 向量**: `summary_vector` / `truth_embedding` 字段目前为 NULL，检索功能依赖这些向量。
 4. **See_also / Open_threads**: 字段已建表但 ingest 阶段填写 NULL——属于后续图谱逻辑和 RAG 更新管线。

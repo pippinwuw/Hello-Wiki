@@ -106,7 +106,7 @@ Runs on `push` and `pull_request`:
 
 ## Environment Requirements
 
-- Node.js 20
+- Node.js >=22.19.0
 - pnpm 10
 - Python 3.11+
 

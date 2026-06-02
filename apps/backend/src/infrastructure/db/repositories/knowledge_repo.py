@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 import asyncpg
@@ -20,10 +20,18 @@ def _jsonb(val: object) -> str:
     return json.dumps(val, ensure_ascii=False, default=str)
 
 
-def _tstzrange(start: datetime | None, end: datetime | None) -> str:
-    s = start.isoformat() if start else ""
-    e = end.isoformat() if end else ""
-    return f"[{s},{e})"
+def _ensure_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _tstzrange(
+    start: datetime | None, end: datetime | None
+) -> asyncpg.Range[datetime]:
+    lower = _ensure_utc(start) if start is not None else None
+    upper = _ensure_utc(end) if end is not None else None
+    return asyncpg.Range(lower, upper, lower_inc=True, upper_inc=False)
 
 
 class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
@@ -46,7 +54,7 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
                 "INSERT INTO raw_chunks (id, source_id, original_text, summary, "
                 "  content_hash, source_url, source_page, source_document, "
                 "  extra_metadata, effective_range, status) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::tstzrange, $11) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11) "
                 "RETURNING id",
                 chunk.id,
                 chunk.source_id,
@@ -91,7 +99,7 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
             row = await conn.fetchrow(
                 "INSERT INTO pages (id, source_id, raw_id, title, compiled_truth, "
                 "  open_threads, see_also, effective_range, status, version) "
-                "VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::uuid[], $8::tstzrange, $9, $10) "
+                "VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::uuid[], $8, $9, $10) "
                 "RETURNING id",
                 page.id,
                 page.source_id,

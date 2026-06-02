@@ -8,6 +8,7 @@ from src.application.chat.chat_executor import ChatExecutor
 from src.application.chat.handlers import AskChatHandler, StreamChatHandler
 from src.application.ingest.compile_workflow import IngestCompilerUseCase
 from src.application.ingest.handlers import CompileDocumentHandler
+from src.application.init.handlers import InitTagsHandler
 from src.application.wiki.handlers import ListWikiHandler, SearchWikiHandler, UpsertWikiHandler
 from src.core.context import ExecutionContext
 from src.core.context import get_execution_context as get_execution_context_from_context
@@ -55,12 +56,20 @@ def get_ingest_compile_handler() -> CompileDocumentHandler:
     return CompileDocumentHandler(use_case=use_case)
 
 
+def get_init_tags_handler() -> InitTagsHandler:
+    return wiring.build_init_tags_handler()
+
+
 def get_agent_handler() -> AgentHandler:  # noqa: F821  # type: ignore
     return wiring.build_agent_handler()
 
 
 def get_ingest_pipeline_handler() -> IngestDocumentHandler:  # noqa: F821  # type: ignore
     return wiring.build_ingest_pipeline_handler()
+
+
+def get_search_knowledge_handler() -> SearchKnowledgeHandler:  # noqa: F821  # type: ignore
+    return wiring.build_search_knowledge_handler()
 
 
 def get_workspace_id(x_workspace_id: str | None = Header(default=None)) -> UUID | None:

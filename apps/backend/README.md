@@ -15,12 +15,21 @@
 ### 1. 环境准备
 
 ```bash
+# Node.js >=22.19.0（用于 packages/agent-ai 统一 LLM 网关）
+node --version
+
 # Python 3.11+ 虚拟环境
 python3.11 -m venv .venv
 source .venv/bin/activate
 
 # 安装依赖
 pip install -e ".[dev]"
+
+# 构建 TS Agent 与 ingest 模型网关
+cd ../..
+pnpm install
+pnpm --filter agent-ai build
+cd apps/backend
 ```
 
 如果你在当前目录下运行脚本，请先把当前目录加进 Python 导入路径。
@@ -40,6 +49,9 @@ export PYTHONPATH="$PWD"
 ### 2. 启动应用
 
 ```bash
+# 启动统一 TS LLM 网关（默认 http://127.0.0.1:8766）
+pnpm --filter agent-ai serve
+
 # 启动 API 服务（localhost:8000）
 python run.py
 
@@ -49,6 +61,36 @@ python worker.py
 # MVP 阶段统一默认租户启动（自动注入 X-Workspace-ID）
 PYTHONPATH="$PWD" python scripts/mvp.py
 ```
+
+Python 侧通过 `AGENT_AI_BASE_URL` 连接 TS Agent 服务，默认值为 `http://127.0.0.1:8766`。
+Python 侧通过 `INGEST_AI_BASE_URL` 连接同一 TS 服务的 ingest 路由（`/extract`、`/init-tags`），默认值为 `http://127.0.0.1:8766`。
+
+已有数据需要补全向量时，可在 `apps/backend` 目录执行（MVP 检索依赖 `pages.truth_embedding`；`summary_vector` 仅占位）：
+
+```bash
+python scripts/backfill_embeddings.py
+```
+
+### Retrieve API（供 agent-ai 多轮检索）
+
+`POST /api/v1/retrieve/search`，请求头 `X-Workspace-ID` 必填。
+
+```json
+{
+  "query": {
+    "sanitize_query_for_prompt": "2025年商城用户投诉量排名前三的问题分别是什么？",
+    "target_tags": [],
+    "time_range": null
+  },
+  "top_k": 10,
+  "exclude_page_ids": ["00000000-0000-0000-0000-000000000001"]
+}
+```
+
+- **语义路（MVP）**：仅 `pages.truth_embedding` 与查询向量相似度；`raw_chunks.summary_vector` 不参与 RRF。
+- **其他路**：tag 匹配、BM25 全文、时间范围（未传 `time_range` 时跳过时间路）。
+- **`exclude_page_ids`**：多轮 retrieve 时传入已见 page，Py 在 RRF 排序后过滤再取 `top_k`。
+- **`degraded`**：能力未完整参与时的标签，例如 `semantic_disabled_no_embeddings`、`time_channel_skipped`（非 HTTP 错误）。
 
 ### 3. 健康检查
 
@@ -267,6 +309,12 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:6006/v1/traces
 ```bash
 curl http://localhost:8000/api/v1/workspace/context \
   -H "X-Workspace-ID: 00000000-0000-0000-0000-000000000001"
+
+# 上传文档进入 ingest pipeline
+curl -X POST http://localhost:8000/api/v1/ingest/upload \
+  -H "X-Workspace-ID: 00000000-0000-0000-0000-000000000001" \
+  -F "file=@policy.txt" \
+  -F "domain=general"
 ```
 
 **框架层实现**：

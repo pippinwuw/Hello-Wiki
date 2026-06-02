@@ -1,9 +1,11 @@
 """Ingest pipeline use case — 3-step orchestrator."""
 
+from datetime import datetime
+from typing import Protocol
 from uuid import uuid4
 
 from src.application.ingest.commands import IngestDocumentCommand
-from src.domain.ai.provider import LLMProviderPort
+from src.application.ingest.embedding_service import EmbeddingBackfillService
 from src.domain.knowledge.entities import (
     Page,
     PageTimeline,
@@ -12,9 +14,22 @@ from src.domain.knowledge.entities import (
     Tag,
 )
 from src.domain.knowledge.repository import KnowledgeRepositoryPort
-from src.infrastructure.ai.extraction_adapter import StructuredExtractionAdapter
+from src.infrastructure.ai.extraction_adapter import ExtractedKnowledge, TsExtractionAdapter
 from src.infrastructure.parser.chunker import RecursiveChunker
 from src.infrastructure.parser.document_loader import DocumentLoaderAdapter
+
+
+class ExtractionAdapterPort(Protocol):
+    async def extract(
+        self,
+        domain: str,
+        chunk_text: str,
+        tag_tree: str,
+        source_document: str = "",
+        source_page: str = "",
+        chunk_index: int = 0,
+        total_chunks: int = 1,
+    ) -> ExtractedKnowledge: ...
 
 
 class IngestPipelineUseCase:
@@ -26,16 +41,17 @@ class IngestPipelineUseCase:
 
     def __init__(
         self,
-        provider: LLMProviderPort,
         repository: KnowledgeRepositoryPort,
-        chunk_size: int = 2000,
-        chunk_overlap: int = 200,
+        extractor: ExtractionAdapterPort | None = None,
+        chunk_size: int = 1500,
+        chunk_overlap: int = 150,
+        embedding_service: EmbeddingBackfillService | None = None,
     ) -> None:
-        self._provider = provider
         self._repo = repository
         self._loader = DocumentLoaderAdapter()
         self._chunker = RecursiveChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        self._extractor = StructuredExtractionAdapter(provider)
+        self._extractor = extractor or TsExtractionAdapter()
+        self._embedding_service = embedding_service
 
     async def execute(self, command: IngestDocumentCommand) -> dict[str, object]:
         texts = self._loader.load(command.file_path)
@@ -71,16 +87,19 @@ class IngestPipelineUseCase:
                     total_chunks=total,
                 )
 
+                effective_range = _effective_range_tuple(extracted)
                 chunk = RawChunk.create(
                     original_text=chunk_text,
                     summary=extracted.chunk_summary,
                     source_document=source_document,
                     source_page=str(meta.source_page or ""),
+                    effective_range=effective_range,
                 )
                 page = Page.create(
                     raw_id=chunk.id,
                     title=extracted.page_title,
                     compiled_truth=extracted.compiled_truth,
+                    effective_range=effective_range,
                 )
                 tags = [
                     Tag.create_leaf(
@@ -101,7 +120,10 @@ class IngestPipelineUseCase:
                     version=1,
                     compiled_truth=extracted.compiled_truth,
                     timeline_id=timeline.id,
-                    page_state={"title": page.title},
+                    page_state={
+                        "title": page.title,
+                        "effective_range": extracted.effective_range.model_dump(),
+                    },
                     timeline_state={
                         "event_type": timeline.event_type.value,
                         "summary": timeline.summary,
@@ -114,6 +136,13 @@ class IngestPipelineUseCase:
                     timeline,
                     version,
                 )
+                if self._embedding_service is not None:
+                    await self._embedding_service.backfill_page_and_chunk(
+                        page_id=page.id,
+                        chunk_id=chunk.id,
+                        compiled_truth=page.compiled_truth,
+                        summary=chunk.summary,
+                    )
                 results.append({"chunk_index": meta.chunk_index, "page_id": str(page.id)})
             except Exception as exc:
                 errors.append({"chunk_index": meta.chunk_index, "error": str(exc)})
@@ -135,3 +164,19 @@ def _serialize(tags: list[Tag]) -> str:
 
     rows = [TagRow(name=t.name, label=t.label, level=t.level, is_leaf=t.is_leaf) for t in tags]
     return serialize_tag_tree(rows)
+
+
+def _parse_date(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    return datetime.fromisoformat(value)
+
+
+def _effective_range_tuple(
+    extracted: ExtractedKnowledge,
+) -> tuple[datetime | None, datetime | None] | None:
+    start = _parse_date(extracted.effective_range.start)
+    end = _parse_date(extracted.effective_range.end)
+    if start is None and end is None:
+        return None
+    return (start, end)
