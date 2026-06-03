@@ -99,14 +99,15 @@
 
 ### 推荐联调顺序
 
-完整步骤（Docker、Python venv、`.env`）见根目录 [**README.md — 快速开始**](../README.md#快速开始)。简要顺序：
+完整步骤见根目录 [**README.md — 快速开始**](../README.md#快速开始)（**仓库根**执行 Docker / uv / 启动命令）。简要顺序：
 
-1. `cd apps/backend && docker compose -f deploy/dev/docker-compose.yml up -d`（PG 首次启动自动跑 `schema.sql`）
-2. `pip install -e ".[dev]"`，复制 `.env.example` → `.env`，配置 `LLM_API_KEY` 与 `DATABASE_URL`
-3. 仓库根：`pnpm install && pnpm --filter agent-ai build`
-4. `pnpm serve:agent-ai`（`:8766`）
-5. `apps/backend`：`python run.py`（设 `PYTHONPATH`；日志 `data/logs/backend.log`）
-6. 仓库根：`pnpm dev`（Web `:3000`）
+1. `docker compose -f apps/backend/deploy/dev/docker-compose.yml up -d`
+2. `cp apps/backend/.env.example apps/backend/.env`，配置 `LLM_API_KEY`
+3. `uv sync --directory apps/backend --extra dev`（或 pip 安装，见 README）
+4. 仓库根：`pnpm install && pnpm --filter agent-ai build`
+5. `pnpm serve:agent-ai`（`:8766`）
+6. `uv run --directory apps/backend python run.py`（`:8000`；日志 `apps/backend/data/logs/backend.log`）
+7. `pnpm dev`（Web `:3000`）
 
 ### 访问地址
 

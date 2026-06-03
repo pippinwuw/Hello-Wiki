@@ -143,74 +143,87 @@ flowchart LR
 ### 环境要求
 
 - **Node.js** >= 22.19.0、**pnpm** 10
-- **Python** 3.11+
+- **Python** 3.11+，推荐安装 **[uv](https://docs.astral.sh/uv/getting-started/installation/)**（管理后端虚拟环境与依赖）
 - **Docker**（本地 PostgreSQL + Redis）
 - **LLM API Key**（DeepSeek 等 OpenAI 兼容接口；写入 `apps/backend/.env`，TS 网关会读取）
 
+以下步骤均在**仓库根目录**执行（除非注明）。
+
 ### 1. 启动数据库（Docker）
 
-在 `apps/backend` 目录：
-
 ```bash
-cd apps/backend
-docker compose -f deploy/dev/docker-compose.yml up -d
+docker compose -f apps/backend/deploy/dev/docker-compose.yml up -d
 ```
 
-- **PostgreSQL**：`localhost:5432`，库名 `zhiyuan`，用户/密码 `postgres` / `vibe_coding`（见 `deploy/dev/docker-compose.yml`）
+- **PostgreSQL**：`localhost:5432`，库名 `zhiyuan`，用户/密码 `postgres` / `vibe_coding`
 - 首次启动会自动执行 `init-extensions.sql` 与 `src/schema.sql`（pgvector + 业务表）
-- **Redis**：`localhost:6379`（可选，部分后台任务用）
+- **Redis**：`localhost:6379`（可选）
 
-检查：`docker compose -f deploy/dev/docker-compose.yml ps` 中 `hwiki-pg` 为 healthy。
+检查：`docker compose -f apps/backend/deploy/dev/docker-compose.yml ps` 中 `hwiki-pg` 为 healthy。
 
-### 2. 配置并安装 Python 后端
+### 2. 配置 Python 后端环境
 
-仍在 `apps/backend`：
+复制并编辑后端环境变量（路径固定在后端包内，便于 agent-ai 读取）：
 
 ```bash
-# 虚拟环境（Windows 用 python 代替 python3.11）
-python -m venv .venv
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# macOS / Linux:
-# source .venv/bin/activate
-
-pip install -e ".[dev]"
-
-copy .env.example .env   # Windows；macOS/Linux: cp .env.example .env
-# 编辑 .env：至少设置 DATABASE_URL（默认已指向上述 Docker PG）与 LLM_API_KEY
+# Windows PowerShell
+Copy-Item apps/backend/.env.example apps/backend/.env
+# macOS / Linux
+# cp apps/backend/.env.example apps/backend/.env
 ```
 
-默认 `DATABASE_URL`（与 Docker 一致）：
+至少配置 `LLM_API_KEY`；`DATABASE_URL` 默认已与 Docker 一致：
 
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:vibe_coding@localhost:5432/zhiyuan
 ```
 
-从 `apps/backend` 启动 API 时需能导入 `src`（任选其一）：
+#### 方式 A：uv（推荐）
+
+[uv](https://docs.astral.sh/uv/) 会在 `apps/backend` 下创建 `.venv` 并解析 `pyproject.toml`：
 
 ```bash
-# PowerShell
-$env:PYTHONPATH = (Get-Location).Path
-# bash
-export PYTHONPATH="$PWD"
+# 安装后端依赖（含 dev 可选组：pytest、ruff 等）
+uv sync --directory apps/backend --extra dev
+
+# 在仓库根启动 API（uv 以 apps/backend 为项目根，.env / 日志路径正确）
+uv run --directory apps/backend python run.py
+```
+
+常用命令（均在仓库根）：
+
+```bash
+uv run --directory apps/backend pytest tests/ -q
+uv run --directory apps/backend python scripts/backfill_embeddings.py
+```
+
+#### 方式 B：pip + venv
+
+```bash
+python -m venv apps/backend/.venv
+# 激活 apps/backend/.venv 后，在仓库根执行：
+pip install -e "./apps/backend[dev]"
+
+# 仍在仓库根启动（把后端目录加入 PYTHONPATH）
+# PowerShell:
+$env:PYTHONPATH = "$PWD/apps/backend"
+python apps/backend/run.py
 ```
 
 ### 3. 安装 Node 依赖并构建 agent-ai
-
-回到**仓库根目录**：
 
 ```bash
 pnpm install
 pnpm --filter agent-ai build
 ```
 
-### 4. 启动三个服务（建议开三个终端）
+### 4. 启动三个服务（建议开三个终端，均在仓库根）
 
-| 顺序 | 目录 | 命令 | 端口 |
-|------|------|------|------|
-| ① | 仓库根 | `pnpm serve:agent-ai` | **8766**（LLM / Retriever） |
-| ② | `apps/backend` | `python run.py`（已激活 venv 且设好 `PYTHONPATH`） | **8000**（API / 检索） |
-| ③ | 仓库根 | `pnpm dev`（Web；或仅 `pnpm --filter web dev`） | **3000** |
+| 顺序 | 命令 | 端口 |
+|------|------|------|
+| ① | `pnpm serve:agent-ai` | **8766**（LLM / Retriever） |
+| ② | `uv run --directory apps/backend python run.py`（或已激活 venv 时 `python apps/backend/run.py` + `PYTHONPATH`） | **8000**（API / 检索） |
+| ③ | `pnpm dev`（Web + 若 workspace 含 backend 脚本则并行；否则 `pnpm --filter web dev`） | **3000** |
 
 健康检查：
 
