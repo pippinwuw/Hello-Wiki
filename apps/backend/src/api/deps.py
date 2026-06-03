@@ -4,8 +4,10 @@ from uuid import UUID
 
 from fastapi import Header, HTTPException, status
 
+from src.application.agent.handlers import AgentHandler
 from src.application.ingest.handlers import IngestDocumentHandler
 from src.application.init.handlers import InitTagsHandler
+from src.application.retrieve.handlers import SearchKnowledgeHandler
 from src.application.retrieve.catalog_handlers import (
     GetDomainTagTreeHandler,
     ListRetrieveDomainsHandler,
@@ -39,23 +41,23 @@ def get_init_tags_handler() -> InitTagsHandler:
     return wiring.build_init_tags_handler()
 
 
-def get_agent_handler() -> AgentHandler:  # noqa: F821  # type: ignore
+def get_agent_handler() -> AgentHandler:
     return wiring.build_agent_handler()
 
 
-def get_ingest_pipeline_handler() -> IngestDocumentHandler:  # noqa: F821  # type: ignore
+def get_ingest_pipeline_handler() -> IngestDocumentHandler:
     return wiring.build_ingest_pipeline_handler()
 
 
-def get_search_knowledge_handler() -> SearchKnowledgeHandler:  # noqa: F821  # type: ignore
+def get_search_knowledge_handler() -> SearchKnowledgeHandler:
     return wiring.build_search_knowledge_handler()
 
 
-def get_list_retrieve_domains_handler() -> ListRetrieveDomainsHandler:  # noqa: F821  # type: ignore
+def get_list_retrieve_domains_handler() -> ListRetrieveDomainsHandler:
     return wiring.build_list_retrieve_domains_handler()
 
 
-def get_domain_tag_tree_handler() -> GetDomainTagTreeHandler:  # noqa: F821  # type: ignore
+def get_domain_tag_tree_handler() -> GetDomainTagTreeHandler:
     return wiring.build_domain_tag_tree_handler()
 
 

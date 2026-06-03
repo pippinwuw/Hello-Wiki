@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 
 from src.api.deps import get_init_tags_handler, get_required_workspace_id
@@ -14,7 +16,7 @@ router = APIRouter(prefix="/init", tags=["init"])
 @router.post("/tags", response_model=InitTagsResponse)
 async def init_tags(
     request: InitTagsRequest,
-    workspace_id=Depends(get_required_workspace_id),
+    workspace_id: UUID = Depends(get_required_workspace_id),
     handler: InitTagsHandler = Depends(get_init_tags_handler),
 ) -> InitTagsResponse:
     result = await handler.handle(

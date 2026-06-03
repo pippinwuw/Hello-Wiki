@@ -1,3 +1,4 @@
+from typing import TypedDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -17,8 +18,43 @@ from src.core.config import settings
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
-TASK_STATUS: dict[str, dict[str, object]] = {}
-DOCUMENTS: dict[str, dict[str, object]] = {}
+
+class DocumentRecord(TypedDict, total=False):
+    workspace_id: str
+    filename: str
+    domain: str
+    status: str
+    wiki_pages: int
+    uploaded_at: str
+    compile_task_id: str | None
+    error: str | None
+    stored_path: str
+
+
+class TaskRecord(TypedDict, total=False):
+    status: str
+    total_chunks: int
+    successful: int
+    failed: int
+    error: str | None
+    document_id: str
+    errors: list[dict[str, object]]
+
+
+TASK_STATUS: dict[str, TaskRecord] = {}
+DOCUMENTS: dict[str, DocumentRecord] = {}
+
+
+def _coerce_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return default
 
 
 def _utc_now_iso() -> str:
@@ -34,7 +70,7 @@ def _document_item(document_id: str) -> IngestDocumentItem:
         filename=str(info["filename"]),
         domain=str(info["domain"]),
         status=str(info["status"]),
-        wiki_pages=int(info.get("wiki_pages", 0)),
+        wiki_pages=_coerce_int(info.get("wiki_pages"), 0),
         uploaded_at=str(info["uploaded_at"]),
         compile_task_id=(
             str(info["compile_task_id"]) if info.get("compile_task_id") else None
@@ -56,11 +92,11 @@ def _sync_document_from_task(document_id: str, task_id: str) -> None:
 
     if task_status == "completed":
         document["status"] = "compiled"
-        document["wiki_pages"] = int(task.get("successful", 0))
+        document["wiki_pages"] = _coerce_int(task.get("successful"), 0)
         document["error"] = None
     elif task_status == "partial":
         document["status"] = "partial"
-        document["wiki_pages"] = int(task.get("successful", 0))
+        document["wiki_pages"] = _coerce_int(task.get("successful"), 0)
         document["error"] = task.get("error")
     elif task_status == "failed":
         document["status"] = "failed"
@@ -193,8 +229,14 @@ async def compile_queued_document(
                     domain=str(info["domain"]),
                 )
             )
+            failed_count = _coerce_int(result.get("failed"), 0)
             TASK_STATUS[task_id].update(
-                {"status": "completed" if result["failed"] == 0 else "partial", **result}
+                {
+                    "status": "completed" if failed_count == 0 else "partial",
+                    "total_chunks": _coerce_int(result.get("total_chunks"), 0),
+                    "successful": _coerce_int(result.get("successful"), 0),
+                    "failed": failed_count,
+                }
             )
             chunk_errors = result.get("errors")
             if isinstance(chunk_errors, list) and chunk_errors:
@@ -225,12 +267,12 @@ async def ingest_status(task_id: str) -> IngestStatusResponse:
     if isinstance(document_id, str):
         _sync_document_from_task(document_id, task_id)
 
-    payload = {
-        "status": info.get("status", "unknown"),
-        "total_chunks": info.get("total_chunks", 0),
-        "successful": info.get("successful", 0),
-        "failed": info.get("failed", 0),
-        "error": info.get("error"),
-        "errors": info.get("errors") if isinstance(info.get("errors"), list) else [],
-    }
-    return IngestStatusResponse(**payload)
+    errors_raw = info.get("errors")
+    return IngestStatusResponse(
+        status=str(info.get("status", "unknown")),
+        total_chunks=int(info.get("total_chunks", 0)),
+        successful=int(info.get("successful", 0)),
+        failed=int(info.get("failed", 0)),
+        error=str(info["error"]) if info.get("error") is not None else None,
+        errors=errors_raw if isinstance(errors_raw, list) else [],
+    )

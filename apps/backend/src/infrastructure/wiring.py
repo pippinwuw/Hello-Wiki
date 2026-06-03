@@ -1,9 +1,26 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from src.core.config import settings
 from src.infrastructure.ai.search_engine import KeywordSearchEngine
 from src.infrastructure.db.repositories.async_wiki_repo_adapter import AsyncWikiRepositoryAdapter
 from src.infrastructure.db.repositories.wiki_repo import FileSystemWikiRepository
+
+if TYPE_CHECKING:
+    from src.application.agent.agent_loop import AgentLoop
+    from src.application.agent.handlers import AgentHandler
+    from src.application.ingest.handlers import IngestDocumentHandler
+    from src.application.ingest.pipeline import IngestPipelineUseCase
+    from src.application.init.handlers import InitTagsHandler
+    from src.application.retrieve.catalog_handlers import (
+        GetDomainTagTreeHandler,
+        ListRetrieveDomainsHandler,
+    )
+    from src.application.retrieve.handlers import SearchKnowledgeHandler
+    from src.infrastructure.db.repositories.knowledge_catalog_repo import (
+        KnowledgeCatalogRepository,
+    )
 
 
 def build_wiki_repository() -> FileSystemWikiRepository:
@@ -18,7 +35,7 @@ def build_search_engine() -> KeywordSearchEngine:
     return KeywordSearchEngine()
 
 
-def build_knowledge_catalog_repo() -> KnowledgeCatalogRepository:  # noqa: F821  # type: ignore
+def build_knowledge_catalog_repo() -> KnowledgeCatalogRepository:
     from src.infrastructure.db.repositories.knowledge_catalog_repo import (
         KnowledgeCatalogRepository,
     )
@@ -26,38 +43,38 @@ def build_knowledge_catalog_repo() -> KnowledgeCatalogRepository:  # noqa: F821 
     return KnowledgeCatalogRepository()
 
 
-def build_list_retrieve_domains_handler() -> ListRetrieveDomainsHandler:  # noqa: F821  # type: ignore
+def build_list_retrieve_domains_handler() -> ListRetrieveDomainsHandler:
     from src.application.retrieve.catalog_handlers import ListRetrieveDomainsHandler
 
     return ListRetrieveDomainsHandler(build_knowledge_catalog_repo())
 
 
-def build_domain_tag_tree_handler() -> GetDomainTagTreeHandler:  # noqa: F821  # type: ignore
+def build_domain_tag_tree_handler() -> GetDomainTagTreeHandler:
     from src.application.retrieve.catalog_handlers import GetDomainTagTreeHandler
 
     return GetDomainTagTreeHandler(build_knowledge_catalog_repo())
 
 
-def build_init_tags_handler() -> InitTagsHandler:  # noqa: F821  # type: ignore
+def build_init_tags_handler() -> InitTagsHandler:
     from src.application.init.handlers import InitTagsHandler
     from src.application.init.init_tags import InitTagsUseCase
 
     return InitTagsHandler(InitTagsUseCase())
 
 
-def build_agent_loop() -> AgentLoop:  # noqa: F821  # type: ignore
+def build_agent_loop() -> AgentLoop:
     from src.application.agent.agent_loop import AgentLoop
 
     return AgentLoop()
 
 
-def build_agent_handler() -> AgentHandler:  # noqa: F821  # type: ignore
+def build_agent_handler() -> AgentHandler:
     from src.application.agent.handlers import AgentHandler
 
     return AgentHandler(build_agent_loop())
 
 
-def build_ingest_pipeline() -> IngestPipelineUseCase:  # noqa: F821  # type: ignore
+def build_ingest_pipeline() -> IngestPipelineUseCase:
     from src.application.ingest.embedding_service import EmbeddingBackfillService
     from src.application.ingest.pipeline import IngestPipelineUseCase
     from src.infrastructure.ai.embedding_adapter import OpenAICompatibleEmbeddingAdapter
@@ -78,13 +95,13 @@ def build_ingest_pipeline() -> IngestPipelineUseCase:  # noqa: F821  # type: ign
     )
 
 
-def build_ingest_pipeline_handler() -> IngestDocumentHandler:  # noqa: F821  # type: ignore
+def build_ingest_pipeline_handler() -> IngestDocumentHandler:
     from src.application.ingest.handlers import IngestDocumentHandler
 
     return IngestDocumentHandler(build_ingest_pipeline())
 
 
-def build_search_knowledge_handler() -> SearchKnowledgeHandler:  # noqa: F821  # type: ignore
+def build_search_knowledge_handler() -> SearchKnowledgeHandler:
     from src.application.retrieve.handlers import SearchKnowledgeHandler
     from src.application.retrieve.pipeline import RetrieveSearchUseCase
     from src.infrastructure.ai.embedding_adapter import OpenAICompatibleEmbeddingAdapter

@@ -241,6 +241,14 @@ X-Workspace-ID: 00000000-0000-0000-0000-000000000101
 
 更完整的 API 表、日志路径、embedding 回填与 CI：**[`docs/dev.md`](docs/dev.md)**、[`apps/backend/README.md`](apps/backend/README.md)。
 
+后端类型检查（与 CI 一致）：
+
+```bash
+pnpm check:backend
+# 或：cd apps/backend && mypy src
+# 仓库根目录：mypy apps/backend/src（读取根目录 mypy.ini，忽略 asyncpg/pgvector 等无 stub 依赖）
+```
+
 ---
 
 ## 文档

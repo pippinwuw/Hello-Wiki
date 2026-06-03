@@ -2,7 +2,7 @@ from typing import Any, TypeVar
 
 from langchain_core.runnables import Runnable
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 from src.core.config import settings
 from src.domain.ai.provider import LLMProviderPort
@@ -25,7 +25,7 @@ class OpenAICompatibleProvider(LLMProviderPort):
     ) -> None:
         self._model = ChatOpenAI(
             model=model or settings.LLM_MODEL_NAME,
-            api_key=api_key or settings.LLM_API_KEY,
+            api_key=SecretStr(api_key) if api_key else (SecretStr(settings.LLM_API_KEY) if settings.LLM_API_KEY else None),
             base_url=base_url or settings.LLM_BASE_URL,
             temperature=temperature or settings.LLM_TEMPERATURE,
             model_kwargs={"extra_body": {"thinking": {"type": "disabled"}}},

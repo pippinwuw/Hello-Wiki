@@ -222,7 +222,7 @@ hello-wiki/
 
 1. `git checkout main && git pull`
 2. 分支：`feat/`、`fix/`、`docs/`
-3. 自测：`pnpm lint`、`pnpm build`、`pnpm check:agent-ai`；backend：`pytest`、`lint-imports`
+3. 自测：`pnpm lint`、`pnpm build`、`pnpm check:agent-ai`；backend：`pnpm check:backend`（或 `cd apps/backend && mypy src`）、`pytest`、`lint-imports`
 4. 提 PR，等 CI 绿灯后合并
 
 ### CI（`.github/workflows/ci.yml`）

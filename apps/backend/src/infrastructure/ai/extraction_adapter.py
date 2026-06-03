@@ -74,7 +74,8 @@ class TsExtractionAdapter:
         )
         try:
             with request.urlopen(http_request, timeout=self._timeout_seconds) as response:
-                return response.read().decode("utf-8")
+                raw: bytes = response.read()
+                return raw.decode("utf-8")
         except error.HTTPError as exc:
             response_body = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(_error_message(response_body) or str(exc)) from exc
@@ -87,6 +88,8 @@ def _error_message(response_body: str) -> str:
         payload = json.loads(response_body)
     except json.JSONDecodeError:
         return response_body
-    if isinstance(payload, dict) and isinstance(payload.get("error"), str):
-        return payload["error"]
+    if isinstance(payload, dict):
+        error_value = payload.get("error")
+        if isinstance(error_value, str):
+            return error_value
     return response_body

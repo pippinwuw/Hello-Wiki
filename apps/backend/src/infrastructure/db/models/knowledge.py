@@ -72,7 +72,7 @@ class RawChunkModel(Base):
     source_id = Column(Text, ForeignKey("sources.id"), nullable=False, default="default")
     original_text = Column(Text, nullable=False)
     summary = Column(Text)
-    summary_vector = Column(Vector(1536))
+    summary_vector: object = Column(Vector(1536))
     content_hash = Column(Text)
     fulltext_search = Column(TSVECTOR)
     source_url = Column(Text)
@@ -106,7 +106,7 @@ class PageModel(Base):
     raw_id = Column(PG_UUID, ForeignKey("raw_chunks.id", ondelete="RESTRICT"), nullable=False)
     title = Column(Text)
     compiled_truth = Column(Text, nullable=False)
-    truth_embedding = Column(Vector(1536))
+    truth_embedding: object = Column(Vector(1536))
     open_threads = Column(JSONB)
     see_also = Column(Text)  # UUID[] stored as text, parsed at app layer
     effective_range = Column(TSTZRANGE)

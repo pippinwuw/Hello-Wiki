@@ -1,5 +1,6 @@
 import asyncio
 import json
+from typing import cast
 from urllib import error, request
 
 from src.application.agent.commands import AgentCommand
@@ -14,12 +15,15 @@ class AgentLoop:
         self._timeout_seconds = timeout_seconds or settings.AGENT_AI_TIMEOUT_SECONDS
 
     async def run(self, command: AgentCommand) -> str:
-        payload = {
-            "message": command.user_input,
-            "workspaceId": command.workspace_id,
-            "sessionId": command.session_id,
-            "history": command.chat_history or [],
-        }
+        payload = cast(
+            dict[str, object],
+            {
+                "message": command.user_input,
+                "workspaceId": command.workspace_id,
+                "sessionId": command.session_id,
+                "history": command.chat_history or [],
+            },
+        )
         raw_output = await asyncio.to_thread(self._post_chat, payload)
         try:
             response = json.loads(raw_output)
@@ -41,7 +45,8 @@ class AgentLoop:
         )
         try:
             with request.urlopen(http_request, timeout=self._timeout_seconds) as response:
-                return response.read().decode("utf-8")
+                raw: bytes = response.read()
+                return raw.decode("utf-8")
         except error.HTTPError as exc:
             response_body = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(_error_message(response_body) or str(exc)) from exc
@@ -54,6 +59,8 @@ def _error_message(response_body: str) -> str:
         payload = json.loads(response_body)
     except json.JSONDecodeError:
         return response_body
-    if isinstance(payload, dict) and isinstance(payload.get("error"), str):
-        return payload["error"]
+    if isinstance(payload, dict):
+        error_value = payload.get("error")
+        if isinstance(error_value, str):
+            return error_value
     return response_body
