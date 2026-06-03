@@ -16,7 +16,7 @@
 
 | 日期 | 文档 | 说明 |
 |------|------|------|
-| 2026-05-09 | [ingest-pipeline-implementation.md](./2026-05-09-ingest-pipeline-implementation.md) | 首版 Ingest 管道、LLM Skill、Agent 骨架、环境搭建 |
+| 2026-05-09 | [ingest-pipeline-implementation.md](./2026-05-09-ingest-pipeline-implementation.md) | 首版 Ingest 背景（**文内 API 表部分过时**，文首已标注） |
 | 2026-06-03 | [ts-ingest-extraction-gateway.md](./2026-06-03-ts-ingest-extraction-gateway.md) | Ingest 提取迁至 TS（pi-ai），Node 22，effective_range / workspace 修复 |
 | 2026-06-03 | [mvp-retrieve-domains-implementation.md](./2026-06-03-mvp-retrieve-domains-implementation.md) | 多租户 knowledge_domains、Retrieve Catalog API、Retriever 两阶段 LLM 编排 |
 

@@ -2,7 +2,9 @@
 
 > 原仓库根目录 `README.md` 的开发说明已迁移至此。快速了解项目见根目录 [README.md](../README.md)。
 
-`hello-wiki` 是基于 **pnpm workspace** 的 monorepo：
+`hello-wiki` 是面向**特定领域的 RAG 知识助手** monorepo（设计说明与检索逻辑见根目录 [**README.md**](../README.md)）。
+
+基于 **pnpm workspace**：
 
 | 路径 | 说明 |
 |------|------|
@@ -97,11 +99,14 @@
 
 ### 推荐联调顺序
 
-1. 启动数据库：`apps/backend/deploy/dev` 下 `docker compose up -d`
-2. 应用 schema：`apps/backend/src/schema.sql`（开发库可整库重建，见 `apps/backend/README.md`）
-3. `pnpm serve:agent-ai`
-4. `cd apps/backend && python run.py`（日志默认 `apps/backend/data/logs/backend.log`）
-5. `pnpm dev`（Web `:3000`）
+完整步骤（Docker、Python venv、`.env`）见根目录 [**README.md — 快速开始**](../README.md#快速开始)。简要顺序：
+
+1. `cd apps/backend && docker compose -f deploy/dev/docker-compose.yml up -d`（PG 首次启动自动跑 `schema.sql`）
+2. `pip install -e ".[dev]"`，复制 `.env.example` → `.env`，配置 `LLM_API_KEY` 与 `DATABASE_URL`
+3. 仓库根：`pnpm install && pnpm --filter agent-ai build`
+4. `pnpm serve:agent-ai`（`:8766`）
+5. `apps/backend`：`python run.py`（设 `PYTHONPATH`；日志 `data/logs/backend.log`）
+6. 仓库根：`pnpm dev`（Web `:3000`）
 
 ### 访问地址
 

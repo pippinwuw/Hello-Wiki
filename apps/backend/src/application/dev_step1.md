@@ -1,5 +1,8 @@
-# 任务
-## 我们先来构建一个ingest()阶段的代码实现，接下来是ingest()阶段说明。
+# 任务（历史设计笔记）
+
+> **非规范文档**：早期产品/检索设想。实现以 `application/ingest/pipeline.py`、`application/retrieve/pipeline.py`、`packages/agent-ai/src/retrieve/loop.ts` 及根目录 `README.md` 为准。Insight 逻辑库检索、chunk 级 `summary_vector` 检索等在此描述但 **MVP 未实现**。
+
+## 我们先来构建一个 ingest() 阶段的代码实现，接下来是 ingest() 阶段说明。
 step.1: 各类信息来源（PDF 、word、md、txt） ---> 文本信息
 策略：Recursive Chunking: The default method using a 5-level delimiter hierarchy
 ``` TypeScript
