@@ -25,7 +25,7 @@ class WikiPageRepository(ABC):
         pass
 
 
-# Aliases required by existing modules (compile_workflow, async_wiki_repo_adapter)
+# Aliases required by existing modules (async_wiki_repo_adapter)
 # Must be distinct classes (not same class) to avoid duplicate-bases TypeError
 class WikiQueryRepositoryPort(WikiPageRepository):
     pass

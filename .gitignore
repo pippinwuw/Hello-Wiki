@@ -58,6 +58,7 @@ __pycache__/
 *.egg-info/
 .eggs/
 dist/
+packages/agent-ai/dist/
 build/
 apps/backend/.mypy_cache/
 apps/backend/.pytest_cache/

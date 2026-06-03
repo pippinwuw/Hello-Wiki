@@ -502,7 +502,7 @@ langchain-text-splitters>=0.3.0
 
 ## 后续任务
 
-详见 `README.md` 的「后续任务」章节，高优先级为:
+详见 `docs/dev.md` 的「后续任务」章节，高优先级为:
 1. 修复 `main.py` 集成
 2. Pages/Tags 基础 CRUD
 3. RRF 多路混合检索

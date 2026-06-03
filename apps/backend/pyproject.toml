@@ -141,7 +141,6 @@ ignore_imports = [
 name = "Application modules should be independent"
 type = "independence"
 modules = [
-    "src.application.chat",
     "src.application.wiki",
     "src.application.ingest",
     "src.application.maintenance",

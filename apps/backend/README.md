@@ -2,6 +2,17 @@
 
 **框架交付版本**：清洁架构 + CQRS + DDD 多层隔离框架，配套完整测试与可观测性基础设施。
 
+## 职责边界（与 TS 分工）
+
+本服务（Python）负责：
+
+- **Wiki 展示 API** — `api/v1/wiki` 文件 Wiki 的 CRUD/树/统计。
+- **数据库 API** — Ingest 落库、标签/知识域、`retrieve` catalog 与 RRF search、embedding 回填等。
+
+**不在此实现**：任何 LLM 业务推理。提取、标签树、Agent/Retriever 对话由 `packages/agent-ai`（`:8766`）完成；本仓库通过 `AGENT_AI_BASE_URL` / `INGEST_AI_BASE_URL` 转发。
+
+主规范全文：仓库根目录 [`docs/dev.md`](../../docs/dev.md#职责边界主规范)。
+
 ## 开发指南与约束
 
 请优先阅读并遵守统一规范文档：

@@ -9,6 +9,7 @@ from src.api.schemas.retrieve import QueryTemplateRequest, SearchKnowledgeReques
 def test_to_search_knowledge_command_parses_exclude_page_ids() -> None:
     command = to_search_knowledge_command(
         SearchKnowledgeRequest(
+            domain="general",
             query=QueryTemplateRequest(sanitize_query_for_prompt="test query"),
             top_k=3,
             exclude_page_ids=[
@@ -27,6 +28,7 @@ def test_to_search_knowledge_command_rejects_invalid_exclude_uuid() -> None:
     with pytest.raises(ValueError, match="exclude_page_ids"):
         to_search_knowledge_command(
             SearchKnowledgeRequest(
+                domain="general",
                 query=QueryTemplateRequest(sanitize_query_for_prompt="q"),
                 exclude_page_ids=["not-a-uuid"],
             ),

@@ -79,6 +79,6 @@ cd apps/backend && python -m pytest tests/test_ingest_pipeline.py tests/test_api
 ## 相关文档（远程仓库）
 
 - 本文件与 [2026-05-09-ingest-pipeline-implementation.md](./2026-05-09-ingest-pipeline-implementation.md)
-- 根 README：`README.md`（接口表与 `pnpm serve:agent-ai`）
+- 开发手册：`docs/dev.md`（命令与接口表）
 
 本地 OpenSpec 归档（不 push）：`openspec/changes/archive/2026-06-03-migrate-ingest-extraction-to-ts-pi-ai/`、`openspec/ingest-pipeline.md`

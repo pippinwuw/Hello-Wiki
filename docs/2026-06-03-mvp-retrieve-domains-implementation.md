@@ -222,6 +222,6 @@ pnpm check:agent-ai
 - 本文件：`docs/2026-06-03-mvp-retrieve-domains-implementation.md`
 - 后端说明：`apps/backend/README.md`
 - Agent-ai：`packages/agent-ai/README.md`
-- 根目录：`README.md`（接口表）
+- 开发手册：`docs/dev.md`（接口表与联调）
 
 本地 OpenSpec 归档（不 push）：`openspec/changes/archive/2026-06-03-mvp-retrieve-domains/`、`openspec/retrieve-pipeline.md`

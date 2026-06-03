@@ -1,6 +1,8 @@
 # agent-ai
 
-TypeScript gateway for Hello-Wiki agent flows: main Agent chat, knowledge extraction, tag initialization, and retrieve (Retriever). Default HTTP port `8766`.
+TypeScript gateway for Hello-Wiki: **all LLM calls and context management** (main Agent chat, extract, init-tags, Retriever orchestration, JSONL sessions). Default HTTP port `8766`.
+
+**Not in this package**: Wiki file APIs or PostgreSQL—those live in `apps/backend` (Python). Python may call this service over HTTP; do not add DB access here.
 
 ## 主 Agent / Retriever 隔离原则
 

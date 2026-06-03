@@ -2,23 +2,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
-from src.api.deps import (
-    get_ingest_compile_handler,
-    get_ingest_pipeline_handler,
-    get_required_workspace_id,
-)
+from src.api.deps import get_ingest_pipeline_handler, get_required_workspace_id
 from src.api.schemas.ingest import (
     CompileDocumentJobResponse,
-    CompileRequest,
-    CompileResponse,
     IngestDocumentItem,
     IngestDocumentListResponse,
     IngestStatusResponse,
     IngestUploadResponse,
 )
 from src.application.ingest.constants import SUPPORTED_INGEST_EXTENSIONS
-from src.application.ingest.commands import CompileDocumentCommand, IngestDocumentCommand
-from src.application.ingest.handlers import CompileDocumentHandler, IngestDocumentHandler
+from src.application.ingest.commands import IngestDocumentCommand
+from src.application.ingest.handlers import IngestDocumentHandler
 from src.core.config import settings
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -73,29 +67,6 @@ def _sync_document_from_task(document_id: str, task_id: str) -> None:
         document["error"] = task.get("error")
     else:
         document["status"] = task_status
-
-
-@router.post("/compile", response_model=CompileResponse)
-async def compile_document(
-    request: CompileRequest,
-    workspace_id: UUID = Depends(get_required_workspace_id),
-    handler: CompileDocumentHandler = Depends(get_ingest_compile_handler),
-) -> CompileResponse:
-    try:
-        page = await handler.handle(
-            CompileDocumentCommand(
-                workspace_id=str(workspace_id),
-                source_document_id=request.source_document_id,
-                title=request.title,
-                markdown_content=request.markdown_content,
-                category=request.category,
-            )
-        )
-    except NotImplementedError as exc:
-        raise HTTPException(
-            status_code=501, detail="ingest compile endpoint is not implemented yet"
-        ) from exc
-    return CompileResponse(title=page.title, status=page.status.value, fact_count=len(page.facts))
 
 
 @router.get("/documents", response_model=IngestDocumentListResponse)

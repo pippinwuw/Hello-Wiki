@@ -4,10 +4,7 @@ from uuid import UUID
 
 from fastapi import Header, HTTPException, status
 
-from src.application.chat.chat_executor import ChatExecutor
-from src.application.chat.handlers import AskChatHandler, StreamChatHandler
-from src.application.ingest.compile_workflow import IngestCompilerUseCase
-from src.application.ingest.handlers import CompileDocumentHandler
+from src.application.ingest.handlers import IngestDocumentHandler
 from src.application.init.handlers import InitTagsHandler
 from src.application.retrieve.catalog_handlers import (
     GetDomainTagTreeHandler,
@@ -19,15 +16,6 @@ from src.core.context import get_execution_context as get_execution_context_from
 from src.core.context import get_workspace_id as get_workspace_id_from_context
 from src.core.tracing import parse_workspace_id
 from src.infrastructure import wiring
-from src.infrastructure.ai.llm_adapter import RuleBasedLLMAdapter
-
-
-def _build_chat_executor() -> ChatExecutor:
-    return ChatExecutor(
-        repository=wiring.build_async_wiki_repository(),
-        search_engine=wiring.build_search_engine(),
-        llm_adapter=RuleBasedLLMAdapter(),
-    )
 
 
 def get_wiki_command_handler() -> UpsertWikiHandler:
@@ -45,19 +33,6 @@ def get_wiki_search_handler() -> SearchWikiHandler:
         query_repo=wiring.build_async_wiki_repository(),
         search_engine=wiring.build_search_engine(),
     )
-
-
-def get_chat_ask_handler() -> AskChatHandler:
-    return AskChatHandler(executor=_build_chat_executor())
-
-
-def get_chat_stream_handler() -> StreamChatHandler:
-    return StreamChatHandler(executor=_build_chat_executor())
-
-
-def get_ingest_compile_handler() -> CompileDocumentHandler:
-    use_case = IngestCompilerUseCase(repository=wiring.build_async_wiki_repository())
-    return CompileDocumentHandler(use_case=use_case)
 
 
 def get_init_tags_handler() -> InitTagsHandler:
