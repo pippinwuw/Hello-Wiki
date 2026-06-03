@@ -15,7 +15,6 @@ from src.core.context import (
     set_execution_context,
     set_workspace_id,
 )
-from src.infrastructure.db.repositories.async_wiki_repo_adapter import AsyncWikiRepositoryAdapter
 
 
 def test_get_wiki_command_handler_returns_handler_instance():

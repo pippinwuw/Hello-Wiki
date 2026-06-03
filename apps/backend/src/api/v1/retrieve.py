@@ -78,9 +78,7 @@ async def search_knowledge(
     workspace_id: UUID = Depends(get_required_workspace_id),
     handler: SearchKnowledgeHandler = Depends(get_search_knowledge_handler),
 ) -> SearchKnowledgeResponse:
-    hits, degraded = await handler.handle(
-        to_search_knowledge_command(request, workspace_id)
-    )
+    hits, degraded = await handler.handle(to_search_knowledge_command(request, workspace_id))
     logger.info(
         "retrieve.search workspace=%s domain=%s top_k=%s hit_count=%s degraded=%s target_tags=%s",
         workspace_id,

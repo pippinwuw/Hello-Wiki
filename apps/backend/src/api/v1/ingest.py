@@ -11,10 +11,10 @@ from src.api.schemas.ingest import (
     IngestStatusResponse,
     IngestUploadResponse,
 )
-from src.domain.ingest.constants import SUPPORTED_INGEST_EXTENSIONS
 from src.application.ingest.commands import IngestDocumentCommand
 from src.application.ingest.handlers import IngestDocumentHandler
 from src.core.config import settings
+from src.domain.ingest.constants import SUPPORTED_INGEST_EXTENSIONS
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
@@ -72,9 +72,7 @@ def _document_item(document_id: str) -> IngestDocumentItem:
         status=str(info["status"]),
         wiki_pages=_coerce_int(info.get("wiki_pages"), 0),
         uploaded_at=str(info["uploaded_at"]),
-        compile_task_id=(
-            str(info["compile_task_id"]) if info.get("compile_task_id") else None
-        ),
+        compile_task_id=(str(info["compile_task_id"]) if info.get("compile_task_id") else None),
         error=str(info["error"]) if info.get("error") else None,
     )
 
@@ -150,9 +148,7 @@ async def ingest_upload(
 
     filename = file.filename or f"upload{suffix}"
     document_id = str(uuid.uuid4())
-    upload_dir = (
-        Path(settings.STORAGE_BASE_PATH) / "uploads" / str(workspace_id)
-    )
+    upload_dir = Path(settings.STORAGE_BASE_PATH) / "uploads" / str(workspace_id)
     upload_dir.mkdir(parents=True, exist_ok=True)
     stored_path = upload_dir / f"{document_id}{suffix}"
     content = await file.read()

@@ -7,11 +7,11 @@ from fastapi import Header, HTTPException, status
 from src.application.agent.handlers import AgentHandler
 from src.application.ingest.handlers import IngestDocumentHandler
 from src.application.init.handlers import InitTagsHandler
-from src.application.retrieve.handlers import SearchKnowledgeHandler
 from src.application.retrieve.catalog_handlers import (
     GetDomainTagTreeHandler,
     ListRetrieveDomainsHandler,
 )
+from src.application.retrieve.handlers import SearchKnowledgeHandler
 from src.application.wiki.handlers import ListWikiHandler, SearchWikiHandler, UpsertWikiHandler
 from src.core.context import ExecutionContext
 from src.core.context import get_execution_context as get_execution_context_from_context

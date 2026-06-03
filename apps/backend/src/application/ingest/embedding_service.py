@@ -26,7 +26,7 @@ class EmbeddingBackfillService:
         truth_embedding = await self._embedding_port.embed(compiled_truth)
         await self._search_repo.update_page_embedding(page_id, truth_embedding)
 
-        # Placeholder: persist summary_vector for future chunk-level retrieval (not used in MVP RRF).
+        # Placeholder: summary_vector for future chunk-level retrieval (not in MVP RRF).
         if summary and summary.strip():
             summary_embedding = await self._embedding_port.embed(summary)
             await self._search_repo.update_chunk_embedding(chunk_id, summary_embedding)

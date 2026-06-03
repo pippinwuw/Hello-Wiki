@@ -23,9 +23,10 @@ class OpenAICompatibleProvider(LLMProviderPort):
         base_url: str | None = None,
         temperature: float | None = None,
     ) -> None:
+        resolved_api_key = api_key or settings.LLM_API_KEY or None
         self._model = ChatOpenAI(
             model=model or settings.LLM_MODEL_NAME,
-            api_key=SecretStr(api_key) if api_key else (SecretStr(settings.LLM_API_KEY) if settings.LLM_API_KEY else None),
+            api_key=SecretStr(resolved_api_key) if resolved_api_key else None,
             base_url=base_url or settings.LLM_BASE_URL,
             temperature=temperature or settings.LLM_TEMPERATURE,
             model_kwargs={"extra_body": {"thinking": {"type": "disabled"}}},

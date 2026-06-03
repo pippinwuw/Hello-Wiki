@@ -3,10 +3,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from src.api.deps import get_init_tags_handler, get_required_workspace_id
-from src.core.logging import get_logger
 from src.api.schemas.ingest import InitTagsRequest, InitTagsResponse
 from src.application.init.commands import InitTagsCommand
 from src.application.init.handlers import InitTagsHandler
+from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

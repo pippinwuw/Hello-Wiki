@@ -5,11 +5,11 @@ from uuid import UUID
 
 import asyncpg
 
-from src.domain.knowledge.scorers.tag_scorer import tag_score
-from src.domain.knowledge.scorers.time_scorer import time_overlap_score
 from src.core.config import settings
 from src.domain.knowledge.catalog_vo import KnowledgePartition
 from src.domain.knowledge.retrieve_vo import ScoredRow, SearchHit
+from src.domain.knowledge.scorers.tag_scorer import tag_score
+from src.domain.knowledge.scorers.time_scorer import time_overlap_score
 from src.domain.knowledge.search_port import KnowledgeSearchPort
 
 
@@ -91,7 +91,7 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
     async def search_by_vector_chunks(
         self, partition: KnowledgePartition, embedding: list[float], limit: int
     ) -> list[ScoredRow]:
-        """Reserved for Phase 2 chunk-level semantic search (summary_vector). Not used in MVP pipeline."""
+        """Phase 2 chunk-level semantic search (summary_vector); not used in MVP."""
         conn = await asyncpg.connect(_dsn())
         try:
             rows = await conn.fetch(

@@ -117,9 +117,7 @@ class KnowledgeCatalogRepository(KnowledgeCatalogPort):
                     label=label,
                     description=description,
                 )
-                await mark_knowledge_domain_initialized(
-                    conn, workspace_id, domain_id
-                )
+                await mark_knowledge_domain_initialized(conn, workspace_id, domain_id)
         finally:
             await conn.close()
 

@@ -153,8 +153,8 @@ def test_retrieve_domains_returns_workspace_catalog() -> None:
             )
 
     app = FastAPI()
-    app.dependency_overrides[deps.get_list_retrieve_domains_handler] = (
-        lambda: FakeListDomainsHandler()
+    app.dependency_overrides[deps.get_list_retrieve_domains_handler] = lambda: (
+        FakeListDomainsHandler()
     )
     app.include_router(retrieve_router, prefix="/api/v1")
     client = TestClient(app)

@@ -26,9 +26,7 @@ def _ensure_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
-def _tstzrange(
-    start: datetime | None, end: datetime | None
-) -> asyncpg.Range[datetime]:
+def _tstzrange(start: datetime | None, end: datetime | None) -> asyncpg.Range[datetime]:
     lower = _ensure_utc(start) if start is not None else None
     upper = _ensure_utc(end) if end is not None else None
     return asyncpg.Range(lower, upper, lower_inc=True, upper_inc=False)
