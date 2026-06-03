@@ -1,68 +1,77 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { parseRetrieveRequest, parseJudgeRoundResult } from "../src/retrieve/schemas.js";
+import {
+  parseRetrieveRequest,
+  parseRetrieverDecision,
+  pickRelevantHits,
+} from "../src/retrieve/schemas.js";
 import type { SearchHit } from "../src/retrieve/schemas.js";
 
-test("parseRetrieveRequest requires searchQueries from main Agent", () => {
+test("parseRetrieveRequest requires searchQueries", () => {
   assert.throws(
     () =>
       parseRetrieveRequest({
-        question: "投诉与改进",
+        question: "q",
         workspaceId: "ws-1",
       }),
-    /searchQueries must be a non-empty array/,
+    /searchQueries/,
   );
 });
 
-test("parseRetrieveRequest accepts context and restatement", () => {
+test("parseRetrieveRequest does not require domain", () => {
   const request = parseRetrieveRequest({
-    question: "去年投诉前三与客服改进？",
-    contextSummary: "讨论2025年商城客服",
-    questionRestatement: "用户需要2025年投诉TOP3及客服改进措施",
+    question: "去年投诉与改进？",
+    contextSummary: "2025商城客服",
+    questionRestatement: "投诉TOP3及改进措施",
     workspaceId: "ws-1",
-    searchQueries: [{ query: "2025年商城投诉排名前三的问题" }],
+    searchQueries: [{ query: "2025年商城投诉排名前三" }],
   });
 
-  assert.equal(request.contextSummary, "讨论2025年商城客服");
-  assert.match(request.questionRestatement, /TOP3/);
-  assert.equal(request.maxIterations, 12);
+  assert.equal(request.question, "去年投诉与改进？");
+  assert.equal(request.maxIterations, 8);
+  assert.equal("domain" in request, false);
 });
 
-test("parseRetrieveRequest falls back questionRestatement to question", () => {
-  const request = parseRetrieveRequest({
-    question: "辅修选课",
-    workspaceId: "ws-1",
-    searchQueries: [{ query: "辅修选课流程" }],
-  });
+test("parseRetrieverDecision parses selectedDomain and nextSearchQueries", () => {
+  const pool = new Map<string, SearchHit>([
+    [
+      "page-1",
+      {
+        pageId: "page-1",
+        score: 1,
+        title: "t",
+        compiledTruth: "c",
+        summary: "s",
+        originalText: "o",
+        tagPaths: [],
+      },
+    ],
+  ]);
 
-  assert.equal(request.questionRestatement, "辅修选课");
-});
-
-test("parseJudgeRoundResult extracts revision plan", () => {
-  const hits: SearchHit[] = [
-    {
-      pageId: "page-1",
-      score: 1,
-      title: "t",
-      compiledTruth: "c",
-      summary: "s",
-      originalText: "o",
-      tagPaths: [],
-    },
-  ];
-
-  const result = parseJudgeRoundResult(
+  const decision = parseRetrieverDecision(
     JSON.stringify({
       relevantPageIds: ["page-1"],
-      sufficient: false,
-      reason: "need better queries",
-      revisedSearchQueries: [{ query: "优化后的陈述句", purpose: "更贴近文档" }],
+      sufficient: true,
+      reason: "done",
+      selectedDomain: "university_policy",
+      nextSearchQueries: [],
+      answerGuidance: "guidance",
+      excerpts: [
+        {
+          pageId: "page-1",
+          title: "t",
+          compiledTruth: "c",
+          originalText: "o",
+          summary: "s",
+          relevance: "r",
+        },
+      ],
     }),
-    hits,
   );
 
-  assert.equal(result.relevantHits.length, 1);
-  assert.equal(result.revisedSearchQueries?.length, 1);
-  assert.match(result.revisedSearchQueries![0]!.query, /优化后/);
+  assert.equal(decision.sufficient, true);
+  assert.equal(decision.selectedDomain, "university_policy");
+  assert.equal(pickRelevantHits(pool, decision.relevantPageIds).length, 1);
+  assert.equal(decision.answerGuidance, "guidance");
 });

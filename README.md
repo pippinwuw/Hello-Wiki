@@ -90,7 +90,9 @@
 | `POST /api/v1/ingest/upload` | ✅ | 文件导入 + TS 模型网关结构化提取 |
 | `GET /api/v1/ingest/status/{id}` | ✅ | 导入进度查询 |
 | `POST /api/v1/init/tags` | ✅ | Python 固定工作流，LLM 子步骤由 TS agent-ai 执行 |
-| `POST /api/v1/retrieve/search` | ✅ | 四路 RRF 混合检索（Tag + 语义 + BM25 + 时间），无 LLM |
+| `GET /api/v1/retrieve/domains` | ✅ | Retriever 可用 domain 列表（按 workspace） |
+| `GET /api/v1/retrieve/domains/{domain}/tag-tree` | ✅ | 指定 domain 的标签树 |
+| `POST /api/v1/retrieve/search` | ✅ | 四路 RRF 混合检索（body 必填 `domain`；hit 无 `original_text`） |
 | `GET /api/v1/wiki/pages` | ✅ | Wiki 页面列表 |
 | `GET /api/v1/wiki/pages/{id}` | ✅ | Wiki 页面详情 |
 | `POST/PUT/DELETE /api/v1/wiki/pages` | ✅ | Wiki 页面基础 CRUD |
@@ -111,7 +113,7 @@
 | `agent-ai` | `POST /init-tags` | ✅ | 标签树 LLM 生成（Python init 工作流调用） |
 | `agent-ai` | `POST /retrieve` | ✅ | 检索 SubAgent Loop（也可由主 Agent tool 进程内调用） |
 
-> **职责边界**：Python 负责 DB CRUD 与源文件接口；TS（`packages/agent-ai`）负责全部 LLM 调用与会话上下文。主 Agent 的 `retrieve` tool 在进程内调用 `src/retrieve/sub-agent-loop.ts`，慢路径检索 HTTP 调 Python `/api/v1/retrieve/search`（后端待你审查后联调）。
+> **职责边界**：Python 负责 DB CRUD 与源文件接口；TS（`packages/agent-ai`）负责全部 LLM 调用与会话上下文。主 Agent 的 `retrieve` tool 进程内调用 `runRetriever`：先 `GET /retrieve/domains`，选定 domain 后 `GET tag-tree`，再 `POST /retrieve/search`（带 `domain`）。
 
 ## 项目结构
 

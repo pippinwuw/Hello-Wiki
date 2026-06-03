@@ -26,31 +26,50 @@ export {
 } from "./ingest/schemas.js";
 export { defaultReferencesDir, loadSkillPrompt } from "./ingest/skill-loader.js";
 
+export { createRetrieverAgent, type RetrieverAgentOptions } from "./retrieve/agent.js";
 export {
-  judgeRound,
-  judgeRelevance,
-  judgeSufficiency,
-  judgeAfterRound,
+  formatKickoffUserMessage,
+  formatTagTreeUserMessage,
+  formatInitialUserMessage,
+  formatRoundUserMessage,
   formatSearchPlan,
-  formatSessionHistory,
-  formatAccumulatedEvidence,
-  type RetrieveJudgeSession,
-  type RetrieveJudgeContext,
-} from "./retrieve/judge.js";
+  formatHitsForRetriever,
+  formatDomainsCatalog,
+  getLastAssistantText,
+} from "./retrieve/retriever-messages.js";
 export { createSearchClient, type SearchClient } from "./retrieve/search-client.js";
+export {
+  createRetrieveContextClient,
+  parseRetrieveDomainsResponse,
+  parseDomainTagTreeResponse,
+  DEFAULT_WORKSPACE_ID,
+  type RetrieveContextClient,
+  type RetrieveDomain,
+  type RetrieveDomainsResult,
+  type DomainTagTreeResult,
+} from "./retrieve/retrieve-context-client.js";
 export { createInsightClient, type InsightClient } from "./retrieve/insight-client.js";
-export { runRetrieveSubAgent, type RetrieveSubAgentOptions } from "./retrieve/sub-agent-loop.js";
+export {
+  runRetriever,
+  runRetrieveSubAgent,
+  type RetrieverOptions,
+  type RetrieveSubAgentOptions,
+} from "./retrieve/loop.js";
 export {
   parseRetrieveRequest,
   parseSearchQueries,
+  parseRetrieverDecision,
   parseJudgeRoundResult,
+  pickRelevantHits,
   type SearchQuery,
   type RetrieveExcerpt,
   type RetrieveRequest,
   type RetrieveResponse,
   type RetrieveSessionRound,
+  type RetrieverDecision,
   type JudgeRoundResult,
   type SearchHit,
+  type SearchRoundBundle,
 } from "./retrieve/schemas.js";
 
 export {

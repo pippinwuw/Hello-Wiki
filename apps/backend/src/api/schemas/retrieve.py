@@ -15,6 +15,7 @@ class QueryTemplateRequest(BaseModel):
 
 
 class SearchKnowledgeRequest(BaseModel):
+    domain: str = Field(min_length=1, description="Knowledge domain id for this search")
     query: QueryTemplateRequest
     top_k: int = Field(default=10, ge=1, le=50)
     exclude_page_ids: list[str] = Field(default_factory=list, max_length=200)
@@ -33,7 +34,6 @@ class SearchHitResponse(BaseModel):
     title: str | None
     compiled_truth: str
     summary: str | None
-    original_text: str
     tag_paths: list[str]
     score_breakdown: ScoreBreakdownResponse
 
@@ -41,3 +41,19 @@ class SearchHitResponse(BaseModel):
 class SearchKnowledgeResponse(BaseModel):
     hits: list[SearchHitResponse]
     degraded: list[str] = Field(default_factory=list)
+
+
+class RetrieveDomainItem(BaseModel):
+    id: str
+    label: str
+    initialized: bool = False
+
+
+class RetrieveDomainsResponse(BaseModel):
+    domains: list[RetrieveDomainItem]
+    domain_count: int = Field(ge=0)
+
+
+class DomainTagTreeResponse(BaseModel):
+    domain: str
+    tag_tree: str = Field(default="", description="Serialized tag tree for the domain")

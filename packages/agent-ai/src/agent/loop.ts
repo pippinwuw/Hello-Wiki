@@ -40,7 +40,10 @@ export async function runAgentChat(
       systemPrompt: systemPrompt ?? "",
       model,
       thinkingLevel: "off",
-      tools: buildAgentTools({ workspaceId: request.workspaceId }),
+      tools: buildAgentTools({
+        workspaceId: request.workspaceId,
+        sessionId,
+      }),
       messages: seedMessages,
     },
     convertToLlm: (messages) =>

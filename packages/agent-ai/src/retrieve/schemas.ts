@@ -3,47 +3,62 @@ export type TimeRange = {
   end?: string;
 };
 
-/** One decomposed statement for semantic / vector search (from main Agent tool params). */
+/** One decomposed sub-question for semantic / vector search (from main Agent tool params). */
 export type SearchQuery = {
   query: string;
   targetTags: string[];
   timeRange?: TimeRange;
-  /** Why this statement was split out; helps the retrieve judge sub-agent. */
   purpose?: string;
 };
 
 export type RetrieveRequest = {
-  /** Legacy / shorthand; prefer questionRestatement for judge and answer. */
   question: string;
-  /** Brief summary of conversational context relevant to this retrieval. */
   contextSummary: string;
-  /** Precise restatement of what the user wants to know (not a raw copy-paste if ambiguous). */
   questionRestatement: string;
   workspaceId: string;
-  /** Decomposed retrieval statements; each is embedded and searched separately in Python. */
+  /** File stem under data/retriever-sessions; main Agent passes its sessionId for correlation. */
+  sessionId?: string;
   searchQueries: SearchQuery[];
-  /** Max search+judge steps (including plan revisions). Default 12. */
+  /** Max retriever agent.prompt rounds (including first analysis). Default 8. */
   maxIterations?: number;
   topK?: number;
 };
 
-/** One step in the retrieve judge session (for coherent multi-round context). */
 export type RetrieveSessionRound = {
   step: number;
-  query: string;
-  purpose?: string;
+  promptRound: number;
+  kind: "kickoff" | "after_search";
+  searchQueryCount: number;
   roundHitCount: number;
   relevantCount: number;
   analysis?: string;
+  sufficient: boolean;
   planRevised: boolean;
+  selectedDomain?: string;
+  searchQueries?: SearchQuery[];
+  nextSearchQueries?: SearchQuery[];
+  degraded?: string[];
+  reason?: string;
 };
 
+export type RetrieverDecision = {
+  relevantPageIds: string[];
+  sufficient: boolean;
+  reason: string;
+  analysis?: string;
+  /** Chosen on kickoff from workspace catalog; Retriever-only. */
+  selectedDomain?: string;
+  nextSearchQueries: SearchQuery[];
+  answerGuidance: string;
+  excerpts: RetrieveExcerpt[];
+};
+
+/** @deprecated Use RetrieverDecision */
 export type JudgeRoundResult = {
   relevantHits: SearchHit[];
   sufficient: boolean;
   reason: string;
   analysis?: string;
-  /** When set, replaces the remaining search plan from the next step onward. */
   revisedSearchQueries?: SearchQuery[];
 };
 
@@ -61,7 +76,6 @@ export type RetrieveResponse = {
   iterations: number;
   answerGuidance: string;
   excerpts: RetrieveExcerpt[];
-  /** Final search plan after any judge revisions. */
   searchQueries: SearchQuery[];
   sessionRounds: RetrieveSessionRound[];
 };
@@ -72,11 +86,18 @@ export type SearchHit = {
   title: string | null;
   compiledTruth: string;
   summary: string | null;
-  originalText: string;
+  originalText?: string;
   tagPaths: string[];
 };
 
 export type SearchResponse = {
+  hits: SearchHit[];
+  degraded: string[];
+};
+
+export type SearchRoundBundle = {
+  roundIndex: number;
+  queries: SearchQuery[];
   hits: SearchHit[];
   degraded: string[];
 };
@@ -95,8 +116,11 @@ function requireString(value: unknown, field: string, allowEmpty = false): strin
   return value;
 }
 
-export function parseSearchQueries(value: unknown): SearchQuery[] {
-  if (!Array.isArray(value) || value.length === 0) {
+export function parseSearchQueries(value: unknown, options?: { allowEmpty?: boolean }): SearchQuery[] {
+  if (!Array.isArray(value)) {
+    throw new Error("searchQueries must be an array");
+  }
+  if (value.length === 0 && !options?.allowEmpty) {
     throw new Error("Invalid retrieve request: searchQueries must be a non-empty array");
   }
 
@@ -148,17 +172,22 @@ export function parseRetrieveRequest(value: unknown): RetrieveRequest {
       : questionRaw;
   const contextSummary =
     typeof value.contextSummary === "string" ? value.contextSummary.trim() : "";
-
   const maxIterations =
     typeof value.maxIterations === "number" && Number.isFinite(value.maxIterations)
-      ? Math.max(1, Math.min(12, Math.trunc(value.maxIterations)))
-      : 12;
+      ? Math.max(1, Math.min(8, Math.trunc(value.maxIterations)))
+      : 8;
+
+  const sessionId =
+    typeof value.sessionId === "string" && value.sessionId.trim()
+      ? value.sessionId.trim()
+      : undefined;
 
   return {
     question: questionRaw,
     contextSummary,
     questionRestatement,
     workspaceId: requireString(value.workspaceId ?? "default", "workspaceId", false),
+    sessionId,
     searchQueries,
     maxIterations,
     topK:
@@ -187,11 +216,12 @@ export function parseSearchResponse(value: unknown): SearchResponse {
         true,
       ),
       summary: typeof item.summary === "string" ? item.summary : null,
-      originalText: requireString(
-        item.original_text ?? item.originalText,
-        `hits[${index}].original_text`,
-        true,
-      ),
+      originalText:
+        typeof item.original_text === "string"
+          ? item.original_text
+          : typeof item.originalText === "string"
+            ? item.originalText
+            : "",
       tagPaths: (() => {
         const rawTags = item.tag_paths ?? item.tagPaths;
         return Array.isArray(rawTags)
@@ -208,59 +238,16 @@ export function parseSearchResponse(value: unknown): SearchResponse {
   return { hits, degraded };
 }
 
-export function parseJudgedPageIds(text: string): string[] {
-  const payload = JSON.parse(text) as unknown;
-  if (!Array.isArray(payload)) {
-    throw new Error("judge output must be a JSON array of page ids");
-  }
-  return payload.filter((item): item is string => typeof item === "string");
-}
-
-export function parseJudgeRoundResult(
-  text: string,
-  roundHits: SearchHit[],
-): JudgeRoundResult {
-  const payload = JSON.parse(text) as unknown;
+export function parseRetrieverDecision(text: string): RetrieverDecision {
+  const payload = JSON.parse(extractJsonObject(text)) as unknown;
   if (!isRecord(payload)) {
-    throw new Error("judge round output must be a JSON object");
+    throw new Error("retriever decision must be a JSON object");
   }
 
-  const relevantIds = new Set(
-    Array.isArray(payload.relevantPageIds)
-      ? payload.relevantPageIds.filter((id): id is string => typeof id === "string")
-      : [],
-  );
-  const relevantHits = roundHits.filter((hit) => relevantIds.has(hit.pageId));
-
-  let revisedSearchQueries: SearchQuery[] | undefined;
-  if (Array.isArray(payload.revisedSearchQueries) && payload.revisedSearchQueries.length > 0) {
-    revisedSearchQueries = parseSearchQueries(payload.revisedSearchQueries);
-  }
-
-  return {
-    relevantHits,
-    sufficient: payload.sufficient === true,
-    reason: typeof payload.reason === "string" ? payload.reason : "",
-    analysis: typeof payload.analysis === "string" ? payload.analysis : undefined,
-    revisedSearchQueries,
-  };
-}
-
-export function parseSufficiencyResult(text: string): { sufficient: boolean; reason: string } {
-  const payload = JSON.parse(text) as unknown;
-  if (!isRecord(payload)) {
-    throw new Error("sufficiency output must be a JSON object");
-  }
-  return {
-    sufficient: payload.sufficient === true,
-    reason: typeof payload.reason === "string" ? payload.reason : "",
-  };
-}
-
-export function parseAnswerGuidance(text: string): { answerGuidance: string; excerpts: RetrieveExcerpt[] } {
-  const payload = JSON.parse(text) as unknown;
-  if (!isRecord(payload)) {
-    throw new Error("answer output must be a JSON object");
+  const legacyRevised = payload.revisedSearchQueries ?? payload.nextSearchQueries;
+  let nextSearchQueries: SearchQuery[] = [];
+  if (Array.isArray(legacyRevised) && legacyRevised.length > 0) {
+    nextSearchQueries = parseSearchQueries(legacyRevised, { allowEmpty: true });
   }
 
   const excerpts = Array.isArray(payload.excerpts)
@@ -287,8 +274,54 @@ export function parseAnswerGuidance(text: string): { answerGuidance: string; exc
       })
     : [];
 
+  const selectedDomain =
+    typeof payload.selectedDomain === "string" && payload.selectedDomain.trim()
+      ? payload.selectedDomain.trim()
+      : undefined;
+
   return {
-    answerGuidance: requireString(payload.answerGuidance, "answerGuidance", true),
+    relevantPageIds: Array.isArray(payload.relevantPageIds)
+      ? payload.relevantPageIds.filter((id): id is string => typeof id === "string")
+      : [],
+    sufficient: payload.sufficient === true,
+    reason: typeof payload.reason === "string" ? payload.reason : "",
+    analysis: typeof payload.analysis === "string" ? payload.analysis : undefined,
+    selectedDomain,
+    nextSearchQueries,
+    answerGuidance:
+      typeof payload.answerGuidance === "string" ? payload.answerGuidance : "",
     excerpts,
   };
+}
+
+/** @deprecated Use parseRetrieverDecision */
+export function parseJudgeRoundResult(text: string, roundHits: SearchHit[]): JudgeRoundResult {
+  const decision = parseRetrieverDecision(text);
+  const relevantIds = new Set(decision.relevantPageIds);
+  return {
+    relevantHits: roundHits.filter((hit) => relevantIds.has(hit.pageId)),
+    sufficient: decision.sufficient,
+    reason: decision.reason,
+    analysis: decision.analysis,
+    revisedSearchQueries:
+      decision.nextSearchQueries.length > 0 ? decision.nextSearchQueries : undefined,
+  };
+}
+
+function extractJsonObject(text: string): string {
+  const start = text.indexOf("{");
+  if (start < 0) {
+    throw new Error("retriever decision JSON not found in model output");
+  }
+  const end = text.lastIndexOf("}");
+  if (end <= start) {
+    throw new Error("retriever decision JSON not found in model output");
+  }
+  return text.slice(start, end + 1);
+}
+
+export function pickRelevantHits(pool: Map<string, SearchHit>, pageIds: string[]): SearchHit[] {
+  return pageIds
+    .map((id) => pool.get(id))
+    .filter((hit): hit is SearchHit => hit !== undefined);
 }

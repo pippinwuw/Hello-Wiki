@@ -8,6 +8,7 @@ import asyncpg
 from src.application.retrieve.scorers.tag_scorer import tag_score
 from src.application.retrieve.scorers.time_scorer import time_overlap_score
 from src.core.config import settings
+from src.domain.knowledge.catalog_vo import KnowledgePartition
 from src.domain.knowledge.retrieve_vo import ScoredRow, SearchHit
 from src.domain.knowledge.search_port import KnowledgeSearchPort
 
@@ -21,7 +22,9 @@ def _vector_literal(values: list[float]) -> str:
 
 
 class KnowledgeSearchRepository(KnowledgeSearchPort):
-    async def search_by_tags(self, target_tags: list[str], limit: int) -> list[ScoredRow]:
+    async def search_by_tags(
+        self, partition: KnowledgePartition, target_tags: list[str], limit: int
+    ) -> list[ScoredRow]:
         conn = await asyncpg.connect(_dsn())
         try:
             rows = await conn.fetch(
@@ -30,9 +33,16 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                 FROM pages p
                 JOIN page_tags pt ON p.id = pt.page_id
                 JOIN tags t ON pt.tag_id = t.id
-                WHERE p.deleted_at IS NULL AND p.status = 'active'
+                WHERE p.workspace_id = $1
+                  AND p.domain_id = $2
+                  AND t.workspace_id = $1
+                  AND t.domain_id = $2
+                  AND p.deleted_at IS NULL
+                  AND p.status = 'active'
                 GROUP BY p.id
-                """
+                """,
+                partition.workspace_id,
+                partition.domain_id,
             )
         finally:
             await conn.close()
@@ -51,7 +61,7 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
         return scored[:limit]
 
     async def search_by_vector_pages(
-        self, embedding: list[float], limit: int
+        self, partition: KnowledgePartition, embedding: list[float], limit: int
     ) -> list[ScoredRow]:
         conn = await asyncpg.connect(_dsn())
         try:
@@ -60,13 +70,17 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                 SELECT id AS page_id,
                        1 - (truth_embedding <=> $1::vector) AS score
                 FROM pages
-                WHERE truth_embedding IS NOT NULL
+                WHERE workspace_id = $2
+                  AND domain_id = $3
+                  AND truth_embedding IS NOT NULL
                   AND deleted_at IS NULL
                   AND status = 'active'
                 ORDER BY truth_embedding <=> $1::vector
-                LIMIT $2
+                LIMIT $4
                 """,
                 _vector_literal(embedding),
+                partition.workspace_id,
+                partition.domain_id,
                 limit,
             )
         finally:
@@ -75,7 +89,7 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
         return [ScoredRow(page_id=row["page_id"], score=float(row["score"])) for row in rows]
 
     async def search_by_vector_chunks(
-        self, embedding: list[float], limit: int
+        self, partition: KnowledgePartition, embedding: list[float], limit: int
     ) -> list[ScoredRow]:
         """Reserved for Phase 2 chunk-level semantic search (summary_vector). Not used in MVP pipeline."""
         conn = await asyncpg.connect(_dsn())
@@ -86,14 +100,20 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                        1 - (rc.summary_vector <=> $1::vector) AS score
                 FROM raw_chunks rc
                 JOIN pages p ON p.raw_id = rc.id
-                WHERE rc.summary_vector IS NOT NULL
+                WHERE rc.workspace_id = $2
+                  AND rc.domain_id = $3
+                  AND p.workspace_id = $2
+                  AND p.domain_id = $3
+                  AND rc.summary_vector IS NOT NULL
                   AND rc.deleted_at IS NULL
                   AND p.deleted_at IS NULL
                   AND p.status = 'active'
                 ORDER BY rc.summary_vector <=> $1::vector
-                LIMIT $2
+                LIMIT $4
                 """,
                 _vector_literal(embedding),
+                partition.workspace_id,
+                partition.domain_id,
                 limit,
             )
         finally:
@@ -101,7 +121,9 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
 
         return [ScoredRow(page_id=row["page_id"], score=float(row["score"])) for row in rows]
 
-    async def search_by_fulltext(self, query: str, limit: int) -> list[ScoredRow]:
+    async def search_by_fulltext(
+        self, partition: KnowledgePartition, query: str, limit: int
+    ) -> list[ScoredRow]:
         conn = await asyncpg.connect(_dsn())
         try:
             rows = await conn.fetch(
@@ -112,13 +134,19 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                 JOIN pages p ON p.raw_id = rc.id,
                 plainto_tsquery('zhparser', $1) q
                 WHERE rc.fulltext_search @@ q
+                  AND rc.workspace_id = $2
+                  AND rc.domain_id = $3
+                  AND p.workspace_id = $2
+                  AND p.domain_id = $3
                   AND rc.deleted_at IS NULL
                   AND p.deleted_at IS NULL
                   AND p.status = 'active'
                 ORDER BY score DESC
-                LIMIT $2
+                LIMIT $4
                 """,
                 query,
+                partition.workspace_id,
+                partition.domain_id,
                 limit,
             )
         finally:
@@ -128,6 +156,7 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
 
     async def search_by_time_range(
         self,
+        partition: KnowledgePartition,
         start: datetime | None,
         end: datetime | None,
         limit: int,
@@ -139,9 +168,14 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                     """
                     SELECT id AS page_id, effective_range
                     FROM pages
-                    WHERE deleted_at IS NULL AND status = 'active'
-                    LIMIT $1
+                    WHERE workspace_id = $1
+                      AND domain_id = $2
+                      AND deleted_at IS NULL
+                      AND status = 'active'
+                    LIMIT $3
                     """,
+                    partition.workspace_id,
+                    partition.domain_id,
                     limit,
                 )
             else:
@@ -151,14 +185,18 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                     """
                     SELECT id AS page_id, effective_range
                     FROM pages
-                    WHERE deleted_at IS NULL
+                    WHERE workspace_id = $1
+                      AND domain_id = $2
+                      AND deleted_at IS NULL
                       AND status = 'active'
                       AND (
                         effective_range IS NULL
-                        OR effective_range && tstzrange($1::timestamptz, $2::timestamptz, '[)')
+                        OR effective_range && tstzrange($3::timestamptz, $4::timestamptz, '[)')
                       )
-                    LIMIT $3
+                    LIMIT $5
                     """,
+                    partition.workspace_id,
+                    partition.domain_id,
                     lower,
                     upper,
                     limit,
@@ -175,7 +213,9 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
         scored.sort(key=lambda item: item.score, reverse=True)
         return scored[:limit]
 
-    async def fetch_hits_by_page_ids(self, page_ids: list[UUID]) -> list[SearchHit]:
+    async def fetch_hits_by_page_ids(
+        self, partition: KnowledgePartition, page_ids: list[UUID]
+    ) -> list[SearchHit]:
         if not page_ids:
             return []
 
@@ -187,7 +227,6 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                        p.title,
                        p.compiled_truth,
                        rc.summary,
-                       rc.original_text,
                        COALESCE(
                          array_agg(t.path::text) FILTER (WHERE t.path IS NOT NULL),
                          '{}'
@@ -196,9 +235,15 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                 JOIN raw_chunks rc ON rc.id = p.raw_id
                 LEFT JOIN page_tags pt ON pt.page_id = p.id
                 LEFT JOIN tags t ON t.id = pt.tag_id
-                WHERE p.id = ANY($1::uuid[])
-                GROUP BY p.id, p.title, p.compiled_truth, rc.summary, rc.original_text
+                    AND t.workspace_id = p.workspace_id
+                    AND t.domain_id = p.domain_id
+                WHERE p.workspace_id = $1
+                  AND p.domain_id = $2
+                  AND p.id = ANY($3::uuid[])
+                GROUP BY p.id, p.title, p.compiled_truth, rc.summary
                 """,
+                partition.workspace_id,
+                partition.domain_id,
                 page_ids,
             )
         finally:
@@ -211,14 +256,13 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                 title=row["title"],
                 compiled_truth=row["compiled_truth"],
                 summary=row["summary"],
-                original_text=row["original_text"],
                 tag_paths=list(row["tag_paths"] or []),
                 score_breakdown={},
             )
             for row in rows
         ]
 
-    async def has_any_embeddings(self) -> bool:
+    async def has_any_embeddings(self, partition: KnowledgePartition) -> bool:
         """MVP: only pages.truth_embedding enables the semantic retrieval channel."""
         conn = await asyncpg.connect(_dsn())
         try:
@@ -226,9 +270,14 @@ class KnowledgeSearchRepository(KnowledgeSearchPort):
                 """
                 SELECT EXISTS (
                   SELECT 1 FROM pages
-                  WHERE truth_embedding IS NOT NULL AND deleted_at IS NULL
+                  WHERE workspace_id = $1
+                    AND domain_id = $2
+                    AND truth_embedding IS NOT NULL
+                    AND deleted_at IS NULL
                 ) AS has_embeddings
-                """
+                """,
+                partition.workspace_id,
+                partition.domain_id,
             )
         finally:
             await conn.close()

@@ -73,19 +73,28 @@ python scripts/backfill_embeddings.py
 
 ### Retrieve API（供 agent-ai 多轮检索）
 
-`POST /api/v1/retrieve/search`，请求头 `X-Workspace-ID` 必填。
+MVP 知识表带 `workspace_id` + `domain_id` 分区。开发库无历史数据时，请用更新后的 `src/schema.sql` **重建数据库**（本变更不提供迁移脚本）。
+
+- `GET /api/v1/retrieve/domains` — 列出当前 workspace 可检索 domain
+- `GET /api/v1/retrieve/domains/{domain}/tag-tree` — 该 domain 的标签树（path 为 `foo.bar`，不含 domain 前缀）
+- `POST /api/v1/retrieve/search` — 混合检索（body 必填 `domain`）
+
+请求头 `X-Workspace-ID`（UUID）必填。默认 MVP 租户：`00000000-0000-0000-0000-000000000001`。
 
 ```json
 {
+  "domain": "general",
   "query": {
     "sanitize_query_for_prompt": "2025年商城用户投诉量排名前三的问题分别是什么？",
-    "target_tags": [],
+    "target_tags": ["functional_area.registration"],
     "time_range": null
   },
   "top_k": 10,
   "exclude_page_ids": ["00000000-0000-0000-0000-000000000001"]
 }
 ```
+
+Search 响应 hit **不含** `original_text`。
 
 - **语义路（MVP）**：仅 `pages.truth_embedding` 与查询向量相似度；`raw_chunks.summary_vector` 不参与 RRF。
 - **其他路**：tag 匹配、BM25 全文、时间范围（未传 `time_range` 时跳过时间路）。
@@ -280,6 +289,8 @@ curl -X POST http://localhost:8000/api/v1/chat/stream \
 export LOG_TO_FILE=true
 export LOG_FILE_PATH=./data/logs/backend.log
 ```
+
+从 `apps/backend` 目录启动（`python run.py` 或 `uvicorn`），日志才会写到 `apps/backend/data/logs/backend.log`。Retriever 编排跑在 **agent-ai (:8766)**；只有 catalog/search 的 HTTP 会打到 Python。检索 E2E 时若未启动 :8000 或工作目录不对，`backend.log` 不会更新。检索路由会打 `retrieve.domains` / `retrieve.tag_tree` / `retrieve.search` 行；完整 Retriever 轮次见 agent-ai 的 `AGENT_AI_RETRIEVE_DEBUG` → `packages/agent-ai/data/logs/retrieve.log`。
 
 ### 2. 启动本地可观测性栈
 

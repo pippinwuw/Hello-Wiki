@@ -51,12 +51,14 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
             close = True
         try:
             row = await conn.fetchrow(
-                "INSERT INTO raw_chunks (id, source_id, original_text, summary, "
-                "  content_hash, source_url, source_page, source_document, "
+                "INSERT INTO raw_chunks (id, workspace_id, domain_id, source_id, original_text, "
+                "  summary, content_hash, source_url, source_page, source_document, "
                 "  extra_metadata, effective_range, status) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13) "
                 "RETURNING id",
                 chunk.id,
+                chunk.workspace_id,
+                chunk.domain_id,
                 chunk.source_id,
                 chunk.original_text,
                 chunk.summary,
@@ -97,11 +99,13 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
             close = True
         try:
             row = await conn.fetchrow(
-                "INSERT INTO pages (id, source_id, raw_id, title, compiled_truth, "
-                "  open_threads, see_also, effective_range, status, version) "
-                "VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::uuid[], $8, $9, $10) "
+                "INSERT INTO pages (id, workspace_id, domain_id, source_id, raw_id, title, "
+                "  compiled_truth, open_threads, see_also, effective_range, status, version) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::uuid[], $10, $11, $12) "
                 "RETURNING id",
                 page.id,
+                page.workspace_id,
+                page.domain_id,
                 page.source_id,
                 page.raw_id,
                 page.title,
@@ -145,10 +149,14 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
             result: list[Tag] = []
             for tag in tags:
                 row = await conn.fetchrow(
-                    "INSERT INTO tags (name, label, description, parent_id, level, path, is_leaf) "
-                    "VALUES ($1, $2, $3, $4, $5, $6::ltree, $7) "
-                    "ON CONFLICT (path) DO UPDATE SET label = EXCLUDED.label "
+                    "INSERT INTO tags (workspace_id, domain_id, name, label, description, "
+                    "parent_id, level, path, is_leaf) "
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8::ltree, $9) "
+                    "ON CONFLICT (workspace_id, domain_id, path) DO UPDATE SET "
+                    "  label = EXCLUDED.label "
                     "RETURNING id, name, label, description, level, path::text, is_leaf",
+                    tag.workspace_id,
+                    tag.domain_id,
                     tag.name,
                     tag.label,
                     tag.description,
@@ -173,11 +181,18 @@ class KnowledgeAsyncRepository(KnowledgeRepositoryPort):
             if close:
                 await conn.close()
 
-    async def get_all_tags_ordered_by_path(self) -> list[Tag]:
+    async def get_tags_for_domain(self, workspace_id: UUID, domain_id: str) -> list[Tag]:
         conn = await asyncpg.connect(_dsn())
         try:
             rows = await conn.fetch(
-                "SELECT id, name, label, level, is_leaf, path::text FROM tags ORDER BY path"
+                """
+                SELECT id, name, label, level, is_leaf, path::text
+                FROM tags
+                WHERE workspace_id = $1 AND domain_id = $2
+                ORDER BY path
+                """,
+                workspace_id,
+                domain_id,
             )
             return [
                 Tag(

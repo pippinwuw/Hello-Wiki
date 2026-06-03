@@ -6,7 +6,7 @@ import type { AgentChatResponse } from "./agent/schemas.js";
 import { extractKnowledge } from "./ingest/extract-knowledge.js";
 import { initializeTags } from "./ingest/init-tags.js";
 import type { ExtractedKnowledge, TagTree } from "./ingest/schemas.js";
-import { runRetrieveSubAgent } from "./retrieve/sub-agent-loop.js";
+import { runRetriever } from "./retrieve/loop.js";
 import { parseRetrieveRequest, type RetrieveResponse } from "./retrieve/schemas.js";
 
 export type AgentRunner = (request: unknown) => Promise<AgentChatResponse>;
@@ -64,7 +64,7 @@ export function createAgentAiServer(options: ServerOptions = {}): Server {
   const extractor = options.extractor ?? extractKnowledge;
   const tagInitializer = options.tagInitializer ?? initializeTags;
   const retrieveRunner =
-    options.retrieveRunner ?? ((payload) => runRetrieveSubAgent(parseRetrieveRequest(payload)));
+    options.retrieveRunner ?? ((payload) => runRetriever(parseRetrieveRequest(payload)));
 
   return createServer(async (request, response) => {
     try {

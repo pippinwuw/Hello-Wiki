@@ -9,6 +9,10 @@ from src.application.chat.handlers import AskChatHandler, StreamChatHandler
 from src.application.ingest.compile_workflow import IngestCompilerUseCase
 from src.application.ingest.handlers import CompileDocumentHandler
 from src.application.init.handlers import InitTagsHandler
+from src.application.retrieve.catalog_handlers import (
+    GetDomainTagTreeHandler,
+    ListRetrieveDomainsHandler,
+)
 from src.application.wiki.handlers import ListWikiHandler, SearchWikiHandler, UpsertWikiHandler
 from src.core.context import ExecutionContext
 from src.core.context import get_execution_context as get_execution_context_from_context
@@ -70,6 +74,14 @@ def get_ingest_pipeline_handler() -> IngestDocumentHandler:  # noqa: F821  # typ
 
 def get_search_knowledge_handler() -> SearchKnowledgeHandler:  # noqa: F821  # type: ignore
     return wiring.build_search_knowledge_handler()
+
+
+def get_list_retrieve_domains_handler() -> ListRetrieveDomainsHandler:  # noqa: F821  # type: ignore
+    return wiring.build_list_retrieve_domains_handler()
+
+
+def get_domain_tag_tree_handler() -> GetDomainTagTreeHandler:  # noqa: F821  # type: ignore
+    return wiring.build_domain_tag_tree_handler()
 
 
 def get_workspace_id(x_workspace_id: str | None = Header(default=None)) -> UUID | None:

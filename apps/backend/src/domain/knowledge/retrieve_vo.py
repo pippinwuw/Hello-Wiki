@@ -32,6 +32,5 @@ class SearchHit:
     title: str | None
     compiled_truth: str
     summary: str | None
-    original_text: str
     tag_paths: list[str]
     score_breakdown: dict[str, float | int | None]

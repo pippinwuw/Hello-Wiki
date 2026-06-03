@@ -212,11 +212,59 @@ def test_init_tags_returns_counts() -> None:
 
     response = client.post(
         "/api/v1/init/tags",
+        headers={"X-Workspace-ID": "00000000-0000-0000-0000-000000000104"},
         json={"domain": "general", "description": "university policies", "language": "zh"},
     )
 
     assert response.status_code == 200
     assert response.json() == {"domain": "general", "categories": 1, "leaves": 2}
+
+
+def test_retrieve_domains_returns_workspace_catalog() -> None:
+    class FakeListDomainsHandler:
+        async def handle(self, workspace_id: UUID) -> tuple[list[dict[str, object]], int]:
+            _ = workspace_id
+            return (
+                [{"id": "general", "label": "general", "initialized": True}],
+                1,
+            )
+
+    app = FastAPI()
+    app.dependency_overrides[deps.get_list_retrieve_domains_handler] = (
+        lambda: FakeListDomainsHandler()
+    )
+    app.include_router(retrieve_router, prefix="/api/v1")
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/retrieve/domains",
+        headers={"X-Workspace-ID": "00000000-0000-0000-0000-000000000104"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["domain_count"] == 1
+    assert payload["domains"][0]["id"] == "general"
+
+
+def test_retrieve_domain_tag_tree_not_found() -> None:
+    class FakeTagTreeHandler:
+        async def handle(self, workspace_id: UUID, domain_id: str) -> str | None:
+            _ = workspace_id
+            _ = domain_id
+            return None
+
+    app = FastAPI()
+    app.dependency_overrides[deps.get_domain_tag_tree_handler] = lambda: FakeTagTreeHandler()
+    app.include_router(retrieve_router, prefix="/api/v1")
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/v1/retrieve/domains/missing/tag-tree",
+        headers={"X-Workspace-ID": "00000000-0000-0000-0000-000000000104"},
+    )
+
+    assert response.status_code == 404
 
 
 def test_retrieve_search_requires_workspace_id() -> None:
@@ -225,6 +273,7 @@ def test_retrieve_search_requires_workspace_id() -> None:
     response = client.post(
         "/api/v1/retrieve/search",
         json={
+            "domain": "general",
             "query": {
                 "sanitize_query_for_prompt": "辅修选课",
                 "target_tags": [],
@@ -240,6 +289,7 @@ def test_retrieve_search_requires_workspace_id() -> None:
 def test_retrieve_search_returns_hits() -> None:
     class FakeSearchHandler:
         async def handle(self, command):  # noqa: ANN001
+            assert command.domain_id == "general"
             assert command.exclude_page_ids == frozenset(
                 {UUID("00000000-0000-0000-0000-000000000099")}
             )
@@ -251,7 +301,6 @@ def test_retrieve_search_returns_hits() -> None:
                         title="Test Page",
                         compiled_truth="truth",
                         summary="summary",
-                        original_text="original",
                         tag_paths=["functional_area.registration"],
                         score_breakdown={"tag_rank": 1},
                     )
@@ -268,6 +317,7 @@ def test_retrieve_search_returns_hits() -> None:
         "/api/v1/retrieve/search",
         headers={"X-Workspace-ID": "00000000-0000-0000-0000-000000000104"},
         json={
+            "domain": "general",
             "query": {
                 "sanitize_query_for_prompt": "辅修选课",
                 "target_tags": ["functional_area.registration"],
@@ -282,4 +332,5 @@ def test_retrieve_search_returns_hits() -> None:
     assert payload["degraded"] == ["semantic_disabled_no_embeddings"]
     assert len(payload["hits"]) == 1
     assert payload["hits"][0]["title"] == "Test Page"
+    assert "original_text" not in payload["hits"][0]
     assert payload["hits"][0]["score_breakdown"]["tag_rank"] == 1

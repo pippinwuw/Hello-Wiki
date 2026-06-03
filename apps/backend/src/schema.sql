@@ -34,10 +34,27 @@ VALUES ('default', 'default', '{"federated": true}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- 2. Tags — hierarchical label tree (ltree materialized path)
+-- 2. Knowledge domains — per-workspace domain registry (Retriever catalog)
+-- ============================================================================
+CREATE TABLE knowledge_domains (
+    workspace_id   UUID NOT NULL,
+    domain_id      TEXT NOT NULL,
+    label          TEXT,
+    description    TEXT,
+    initialized_at TIMESTAMPTZ,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (workspace_id, domain_id)
+);
+
+COMMENT ON TABLE knowledge_domains IS 'Queryable knowledge domains per workspace; registered on init_tags.';
+
+-- ============================================================================
+-- 3. Tags — hierarchical label tree (ltree path without domain prefix)
 -- ============================================================================
 CREATE TABLE tags (
     id             INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    workspace_id   UUID NOT NULL,
+    domain_id      TEXT NOT NULL,
     name           VARCHAR(128) NOT NULL,
     label          VARCHAR(256),
     description    TEXT,
@@ -48,11 +65,14 @@ CREATE TABLE tags (
     is_leaf        BOOLEAN NOT NULL DEFAULT true,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT uq_tags_path UNIQUE (path)
+    CONSTRAINT fk_tags_domain
+        FOREIGN KEY (workspace_id, domain_id)
+        REFERENCES knowledge_domains (workspace_id, domain_id),
+    CONSTRAINT uq_tags_partition_path UNIQUE (workspace_id, domain_id, path)
 );
 
 COMMENT ON TABLE tags IS 'Hierarchical tag tree. Only leaf tags should be assigned to pages.';
-COMMENT ON COLUMN tags.path IS 'ltree materialized path, e.g. policy.examinations.makeup_exam';
+COMMENT ON COLUMN tags.path IS 'ltree path within domain, e.g. functional_area.registration (no domain prefix)';
 COMMENT ON COLUMN tags.document_count IS 'Denormalised count of associated pages (cache for split decisions).';
 COMMENT ON COLUMN tags.is_leaf IS 'Only leaf tags may be directly linked to pages.';
 
@@ -71,10 +91,12 @@ COMMENT ON TABLE page_tags IS 'Many-to-many link between pages and leaf tags.';
 CREATE INDEX idx_page_tags_tag ON page_tags(tag_id);
 
 -- ============================================================================
--- 3. Raw Chunks — ingested source text layer
+-- 4. Raw Chunks — ingested source text layer
 -- ============================================================================
 CREATE TABLE raw_chunks (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id     UUID NOT NULL,
+    domain_id        TEXT NOT NULL,
     source_id        TEXT NOT NULL DEFAULT 'default' REFERENCES sources(id),
     original_text    TEXT NOT NULL,
     summary          TEXT,
@@ -90,7 +112,10 @@ CREATE TABLE raw_chunks (
     last_reviewed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at       TIMESTAMPTZ,
-    status           VARCHAR(32) DEFAULT 'active'
+    status           VARCHAR(32) DEFAULT 'active',
+    CONSTRAINT fk_raw_chunks_domain
+        FOREIGN KEY (workspace_id, domain_id)
+        REFERENCES knowledge_domains (workspace_id, domain_id)
 );
 
 COMMENT ON TABLE raw_chunks IS 'Raw ingested text. Each row is one chunk from a source document.';
@@ -110,11 +135,15 @@ CREATE INDEX idx_raw_summary_vector ON raw_chunks USING hnsw (summary_vector vec
 -- Temporal range index
 CREATE INDEX idx_raw_effective_range ON raw_chunks USING GIST (effective_range);
 
+CREATE INDEX idx_raw_chunks_partition ON raw_chunks (workspace_id, domain_id);
+
 -- ============================================================================
--- 4. Pages — compiled entity layer (the "Wiki page")
+-- 5. Pages — compiled entity layer (the "Wiki page")
 -- ============================================================================
 CREATE TABLE pages (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id     UUID NOT NULL,
+    domain_id        TEXT NOT NULL,
     source_id        TEXT NOT NULL DEFAULT 'default' REFERENCES sources(id),
     raw_id           UUID NOT NULL REFERENCES raw_chunks(id) ON DELETE RESTRICT,
     title            TEXT,
@@ -128,7 +157,10 @@ CREATE TABLE pages (
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     version          INT NOT NULL DEFAULT 1,
     last_timeline_id UUID,
-    deleted_at       TIMESTAMPTZ
+    deleted_at       TIMESTAMPTZ,
+    CONSTRAINT fk_pages_domain
+        FOREIGN KEY (workspace_id, domain_id)
+        REFERENCES knowledge_domains (workspace_id, domain_id)
 );
 
 COMMENT ON TABLE pages IS 'Compiled entity — the current canonical view synthesised from raw chunks.';
@@ -150,8 +182,11 @@ CREATE INDEX idx_pages_effective_range ON pages USING GIST (effective_range);
 -- Trigram index for fuzzy title lookup
 CREATE INDEX idx_pages_title_trgm ON pages USING GIN (title gin_trgm_ops);
 
+CREATE INDEX idx_pages_ws_domain_active ON pages (workspace_id, domain_id)
+    WHERE deleted_at IS NULL AND status = 'active';
+
 -- ============================================================================
--- 5. Page Timeline — append-only event log
+-- 6. Page Timeline — append-only event log
 -- ============================================================================
 CREATE TABLE page_timeline (
     id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -174,7 +209,7 @@ COMMENT ON COLUMN page_timeline.summary IS 'Human-readable description of what c
 CREATE INDEX idx_timeline_page_time ON page_timeline(page_id, event_at DESC);
 
 -- ============================================================================
--- 6. Page Versions — full snapshot of page state + triggering timeline event
+-- 7. Page Versions — full snapshot of page state + triggering timeline event
 -- ============================================================================
 CREATE TABLE page_versions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -198,7 +233,7 @@ CREATE INDEX idx_versions_page ON page_versions(page_id, version DESC);
 CREATE INDEX idx_versions_timeline ON page_versions(timeline_id);
 
 -- ============================================================================
--- 7. Deferred foreign keys & triggers
+-- 8. Deferred foreign keys & triggers
 -- ============================================================================
 
 -- page_tags → pages FK (deferred because pages is created after page_tags)

@@ -18,12 +18,31 @@ def build_search_engine() -> KeywordSearchEngine:
     return KeywordSearchEngine()
 
 
+def build_knowledge_catalog_repo() -> KnowledgeCatalogRepository:  # noqa: F821  # type: ignore
+    from src.infrastructure.db.repositories.knowledge_catalog_repo import (
+        KnowledgeCatalogRepository,
+    )
+
+    return KnowledgeCatalogRepository()
+
+
+def build_list_retrieve_domains_handler() -> ListRetrieveDomainsHandler:  # noqa: F821  # type: ignore
+    from src.application.retrieve.catalog_handlers import ListRetrieveDomainsHandler
+
+    return ListRetrieveDomainsHandler(build_knowledge_catalog_repo())
+
+
+def build_domain_tag_tree_handler() -> GetDomainTagTreeHandler:  # noqa: F821  # type: ignore
+    from src.application.retrieve.catalog_handlers import GetDomainTagTreeHandler
+
+    return GetDomainTagTreeHandler(build_knowledge_catalog_repo())
+
+
 def build_init_tags_handler() -> InitTagsHandler:  # noqa: F821  # type: ignore
     from src.application.init.handlers import InitTagsHandler
     from src.application.init.init_tags import InitTagsUseCase
 
-    use_case = InitTagsUseCase()
-    return InitTagsHandler(use_case)
+    return InitTagsHandler(InitTagsUseCase())
 
 
 def build_agent_loop() -> AgentLoop:  # noqa: F821  # type: ignore

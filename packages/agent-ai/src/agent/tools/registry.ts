@@ -1,22 +1,39 @@
+/**
+ * Main Agent tool registry.
+ * Retrieve isolation: see packages/agent-ai/README.md §「主 Agent / Retriever 隔离原则」.
+ * Do not add domain, tagTree, targetTags, or pageId to the retrieve tool schema.
+ */
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
 
-import { runRetrieveSubAgent } from "../../retrieve/sub-agent-loop.js";
-import { parseRetrieveRequest } from "../../retrieve/schemas.js";
-
+import { DEFAULT_WORKSPACE_ID } from "../../retrieve/retrieve-context-client.js";
+import { runRetriever } from "../../retrieve/loop.js";
+import { parseRetrieveRequest, type RetrieveResponse } from "../../retrieve/schemas.js";
 export type ToolRegistryOptions = {
   pythonApiBaseUrl?: string;
   workspaceId?: string;
+  sessionId?: string;
 };
 
 const DEFAULT_PYTHON_API_BASE_URL = "http://127.0.0.1:8000";
+
+function summarizeRetrieveForMainAgent(result: RetrieveResponse) {
+  return {
+    sufficient: result.sufficient,
+    excerptCount: result.excerpts.length,
+  };
+}
 
 export function buildAgentTools(options: ToolRegistryOptions = {}): AgentTool[] {
   const pythonApiBaseUrl =
     options.pythonApiBaseUrl ??
     process.env.AGENT_AI_PYTHON_API_BASE_URL ??
     DEFAULT_PYTHON_API_BASE_URL;
-  const workspaceId = options.workspaceId ?? "default";
+  const workspaceId =
+    options.workspaceId ??
+    process.env.AGENT_AI_WORKSPACE_ID ??
+    DEFAULT_WORKSPACE_ID;
+  const sessionId = options.sessionId;
 
   return [
     {
@@ -78,7 +95,7 @@ export function buildAgentTools(options: ToolRegistryOptions = {}): AgentTool[] 
       name: "retrieve",
       label: "Retrieve Knowledge",
       description:
-        "Run the retrieve judge sub-agent. Provide contextSummary, a precise questionRestatement, and searchQueries (declarative statements for vector search). The sub-agent may revise searchQueries after reading retrieval results.",
+        "Run the Retriever sub-agent. Provide contextSummary, questionRestatement, and searchQueries (sub-questions) only (no domain or tag paths). Retriever loads DB catalog internally and returns answer guidance plus excerpts.",
       parameters: Type.Object({
         question: Type.String({
           minLength: 1,
@@ -98,16 +115,11 @@ export function buildAgentTools(options: ToolRegistryOptions = {}): AgentTool[] 
             query: Type.String({
               minLength: 1,
               description:
-                "One declarative retrieval statement for semantic/vector search (not a compound question).",
+                "One decomposed sub-question for semantic/vector search (not a compound question).",
             }),
             purpose: Type.Optional(
               Type.String({
-                description: "Why this statement was split out; helps the retrieve judge.",
-              }),
-            ),
-            targetTags: Type.Optional(
-              Type.Array(Type.String(), {
-                description: "Optional tag path hints for Python slow-path search.",
+                description: "Why this statement was split out; helps the Retriever.",
               }),
             ),
           }),
@@ -119,11 +131,12 @@ export function buildAgentTools(options: ToolRegistryOptions = {}): AgentTool[] 
         const payload = coerceRetrieveParams(params);
         onUpdate?.({
           content: [{ type: "text", text: "正在检索知识库..." }],
-          details: payload,
+          details: { question: payload.question },
         });
 
-        const result = await runRetrieveSubAgent(
-          parseRetrieveRequest({ ...payload, workspaceId }),
+        const result = await runRetriever(
+          parseRetrieveRequest({ ...payload, workspaceId, sessionId }),
+          { sessionId },
         );
 
         return {
@@ -139,7 +152,7 @@ export function buildAgentTools(options: ToolRegistryOptions = {}): AgentTool[] 
               ].join("\n"),
             },
           ],
-          details: result,
+          details: summarizeRetrieveForMainAgent(result),
         };
       },
     },

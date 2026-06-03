@@ -10,6 +10,8 @@ from src.domain.knowledge.value_objects import ChunkStatus, EventType, PageStatu
 class RawChunk:
     id: UUID
     original_text: str
+    workspace_id: UUID | None = None
+    domain_id: str = "general"
     source_id: str = "default"
     summary: str | None = None
     content_hash: str | None = None
@@ -29,6 +31,8 @@ class RawChunk:
 @dataclass
 class Tag:
     id: int | None = None
+    workspace_id: UUID | None = None
+    domain_id: str = "general"
     name: str = ""
     label: str = ""
     description: str = ""
@@ -103,6 +107,8 @@ class Page:
     id: UUID
     raw_id: UUID
     compiled_truth: str
+    workspace_id: UUID | None = None
+    domain_id: str = "general"
     title: str | None = None
     source_id: str = "default"
     open_threads: list[str] | None = None
@@ -121,6 +127,7 @@ class Page:
         compiled_truth: str,
         title: str | None = None,
         effective_range: tuple[datetime | None, datetime | None] | None = None,
+        **kwargs: Any,
     ) -> "Page":
         return cls(
             id=uuid4(),
@@ -128,4 +135,5 @@ class Page:
             compiled_truth=compiled_truth,
             title=title,
             effective_range=effective_range,
+            **kwargs,
         )

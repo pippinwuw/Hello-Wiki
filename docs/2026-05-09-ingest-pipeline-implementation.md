@@ -1,6 +1,6 @@
 # Ingest Pipeline 实现变更文档
 
-> 日期: 2026-05-09 | 分支: `feat/database-models` | 关联 openspec: `implement-ingest-pipeline`
+> 日期: 2026-05-09 | 分支: `feat/database-models` | 本地 OpenSpec: `implement-ingest-pipeline`（`openspec/` 不提交远程）
 
 ## 概述
 

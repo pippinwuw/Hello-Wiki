@@ -18,6 +18,7 @@ def to_search_knowledge_command(
     exclude_page_ids = frozenset(_parse_page_ids(request.exclude_page_ids))
     return SearchKnowledgeCommand(
         workspace_id=workspace_id,
+        domain_id=request.domain,
         query=QueryTemplate(
             sanitize_query_for_prompt=request.query.sanitize_query_for_prompt,
             target_tags=list(request.query.target_tags),
@@ -57,7 +58,6 @@ def _to_hit_response(hit: SearchHit) -> SearchHitResponse:
         title=hit.title,
         compiled_truth=hit.compiled_truth,
         summary=hit.summary,
-        original_text=hit.original_text,
         tag_paths=list(hit.tag_paths),
         score_breakdown=ScoreBreakdownResponse(
             tag_rank=_as_int(breakdown.get("tag_rank")),

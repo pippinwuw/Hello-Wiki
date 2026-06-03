@@ -5,6 +5,7 @@ from uuid import UUID
 from src.application.retrieve.commands import SearchKnowledgeCommand
 from src.application.retrieve.rrf import rrf_fusion
 from src.domain.ai.embedding_port import EmbeddingPort
+from src.domain.knowledge.catalog_vo import KnowledgePartition
 from src.domain.knowledge.retrieve_vo import ScoredRow, SearchHit
 from src.domain.knowledge.search_port import KnowledgeSearchPort
 
@@ -37,13 +38,20 @@ class RetrieveSearchUseCase:
         query = command.query
         limit = SEARCH_CANDIDATE_LIMIT
         exclude = command.exclude_page_ids
+        partition = KnowledgePartition(
+            workspace_id=command.workspace_id,
+            domain_id=command.domain_id,
+        )
 
-        tag_task = self._search_repo.search_by_tags(query.target_tags, limit)
-        bm25_task = self._search_repo.search_by_fulltext(query.sanitize_query_for_prompt, limit)
+        tag_task = self._search_repo.search_by_tags(partition, query.target_tags, limit)
+        bm25_task = self._search_repo.search_by_fulltext(
+            partition, query.sanitize_query_for_prompt, limit
+        )
 
         has_time_range = query.time_range_start is not None or query.time_range_end is not None
         if has_time_range:
             time_task = self._search_repo.search_by_time_range(
+                partition,
                 query.time_range_start,
                 query.time_range_end,
                 limit,
@@ -52,12 +60,14 @@ class RetrieveSearchUseCase:
             degraded.append("time_channel_skipped")
             time_task = None
 
-        has_embeddings = await self._search_repo.has_any_embeddings()
+        has_embeddings = await self._search_repo.has_any_embeddings(partition)
         semantic_results: list[ScoredRow] = []
 
         if has_embeddings and self._embedding_port is not None:
             embedding = await self._embedding_port.embed(query.sanitize_query_for_prompt)
-            semantic_results = await self._search_repo.search_by_vector_pages(embedding, limit)
+            semantic_results = await self._search_repo.search_by_vector_pages(
+                partition, embedding, limit
+            )
         elif not has_embeddings:
             degraded.append("semantic_disabled_no_embeddings")
         elif self._embedding_port is None:
@@ -76,7 +86,7 @@ class RetrieveSearchUseCase:
         if not top_ids:
             return [], degraded
 
-        hits = await self._search_repo.fetch_hits_by_page_ids(top_ids)
+        hits = await self._search_repo.fetch_hits_by_page_ids(partition, top_ids)
         score_map = {page_id: score for page_id, score in fused}
         rank_maps = {
             "tag_rank": _rank_map(tag_results),

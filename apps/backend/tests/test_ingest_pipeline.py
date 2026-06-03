@@ -43,7 +43,7 @@ class FakeKnowledgeRepository(KnowledgeRepositoryPort):
         self.tags = tags
         return [Tag(id=index + 1, name=tag.name, label=tag.label) for index, tag in enumerate(tags)]
 
-    async def get_all_tags_ordered_by_path(self) -> list[Tag]:
+    async def get_tags_for_domain(self, workspace_id, domain_id: str) -> list[Tag]:  # noqa: ANN001
         return [
             Tag(name="functional_area", label="Functional Area", level=0, is_leaf=False),
             Tag(name="registration_course", label="选课注册", level=1, is_leaf=True),

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Protocol
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from src.application.ingest.commands import IngestDocumentCommand
 from src.application.ingest.embedding_service import EmbeddingBackfillService
@@ -72,9 +72,12 @@ class IngestPipelineUseCase:
         results: list[dict[str, object]] = []
         errors: list[dict[str, object]] = []
 
+        workspace_id = UUID(command.workspace_id)
+        domain_id = command.domain
+
         for chunk_text, meta in chunks:
             try:
-                tag_rows = await self._repo.get_all_tags_ordered_by_path()
+                tag_rows = await self._repo.get_tags_for_domain(workspace_id, domain_id)
                 tag_tree = _serialize(tag_rows)
 
                 extracted = await self._extractor.extract(
@@ -90,6 +93,8 @@ class IngestPipelineUseCase:
                 effective_range = _effective_range_tuple(extracted)
                 chunk = RawChunk.create(
                     original_text=chunk_text,
+                    workspace_id=workspace_id,
+                    domain_id=domain_id,
                     summary=extracted.chunk_summary,
                     source_document=source_document,
                     source_page=str(meta.source_page or ""),
@@ -97,16 +102,22 @@ class IngestPipelineUseCase:
                 )
                 page = Page.create(
                     raw_id=chunk.id,
+                    workspace_id=workspace_id,
+                    domain_id=domain_id,
                     title=extracted.page_title,
                     compiled_truth=extracted.compiled_truth,
                     effective_range=effective_range,
                 )
                 tags = [
-                    Tag.create_leaf(
+                    Tag(
+                        workspace_id=workspace_id,
+                        domain_id=domain_id,
                         name=t.name,
                         label=t.label,
-                        parent_path=t.parent_hint,
                         description=t.description,
+                        level=t.parent_hint.count(".") + 1 if t.parent_hint else 0,
+                        path=f"{t.parent_hint}.{t.name}" if t.parent_hint else t.name,
+                        is_leaf=True,
                     )
                     for t in extracted.suggested_tags
                 ]

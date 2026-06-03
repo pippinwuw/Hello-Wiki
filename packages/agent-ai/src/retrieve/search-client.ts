@@ -8,12 +8,14 @@ import {
 export type SearchClientOptions = {
   pythonApiBaseUrl?: string;
   workspaceId?: string;
+  domain?: string;
   fetchFn?: typeof fetch;
 };
 
 const DEFAULT_PYTHON_API_BASE_URL = "http://127.0.0.1:8000";
 
 export type SearchClient = {
+  setDomain: (domain: string) => void;
   search: (
     query: SearchQuery,
     topK: number,
@@ -28,15 +30,26 @@ export function createSearchClient(options: SearchClientOptions = {}): SearchCli
     process.env.AGENT_AI_PYTHON_API_BASE_URL ??
     process.env.RETRIEVE_AI_PYTHON_API_BASE_URL ??
     DEFAULT_PYTHON_API_BASE_URL;
-  const workspaceId = options.workspaceId ?? "default";
+  const workspaceId =
+    options.workspaceId ??
+    process.env.AGENT_AI_WORKSPACE_ID ??
+    "00000000-0000-0000-0000-000000000001";
+  let activeDomain = options.domain ?? "";
   const fetchFn = options.fetchFn ?? fetch;
 
   return {
+    setDomain(domain: string) {
+      activeDomain = domain;
+    },
     async search(
       searchQuery: SearchQuery,
       topK: number,
       excludePageIds: string[] = [],
     ): Promise<SearchResponse> {
+      if (!activeDomain.trim()) {
+        throw new Error("search client domain is not set; call setDomain(selectedDomain) first");
+      }
+
       const response = await fetchFn(`${pythonApiBaseUrl}/api/v1/retrieve/search`, {
         method: "POST",
         headers: {
@@ -44,6 +57,7 @@ export function createSearchClient(options: SearchClientOptions = {}): SearchCli
           "x-workspace-id": workspaceId,
         },
         body: JSON.stringify({
+          domain: activeDomain,
           query: {
             sanitize_query_for_prompt: searchQuery.query,
             target_tags: searchQuery.targetTags,
