@@ -7,7 +7,7 @@ from langchain_community.document_loaders import (
     UnstructuredMarkdownLoader,
 )
 
-from src.application.ingest.constants import SUPPORTED_INGEST_EXTENSIONS
+from src.domain.ingest.constants import SUPPORTED_INGEST_EXTENSIONS
 
 LOADER_MAP = {
     ".pdf": PyPDFLoader,

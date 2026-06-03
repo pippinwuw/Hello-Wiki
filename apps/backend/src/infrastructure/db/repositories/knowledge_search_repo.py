@@ -5,8 +5,8 @@ from uuid import UUID
 
 import asyncpg
 
-from src.application.retrieve.scorers.tag_scorer import tag_score
-from src.application.retrieve.scorers.time_scorer import time_overlap_score
+from src.domain.knowledge.scorers.tag_scorer import tag_score
+from src.domain.knowledge.scorers.time_scorer import time_overlap_score
 from src.core.config import settings
 from src.domain.knowledge.catalog_vo import KnowledgePartition
 from src.domain.knowledge.retrieve_vo import ScoredRow, SearchHit

@@ -1,4 +1,4 @@
-from src.application.retrieve.scorers.tag_scorer import tag_score
+from src.domain.knowledge.scorers.tag_scorer import tag_score
 
 
 def test_tag_score_exact_match() -> None:

@@ -134,6 +134,7 @@ ignore_imports = [
     "src.infrastructure.wiring -> src.application.ingest.embedding_service",
     "src.infrastructure.wiring -> src.application.retrieve.handlers",
     "src.infrastructure.wiring -> src.application.retrieve.pipeline",
+    "src.infrastructure.wiring -> src.application.retrieve.catalog_handlers",
 ]
 
 # ---- Contract 2: 应用模块独立性（确保 chat/wiki/ingest 不互依赖） ----

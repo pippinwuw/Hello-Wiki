@@ -10,7 +10,7 @@ from src.api.schemas.ingest import (
     IngestStatusResponse,
     IngestUploadResponse,
 )
-from src.application.ingest.constants import SUPPORTED_INGEST_EXTENSIONS
+from src.domain.ingest.constants import SUPPORTED_INGEST_EXTENSIONS
 from src.application.ingest.commands import IngestDocumentCommand
 from src.application.ingest.handlers import IngestDocumentHandler
 from src.core.config import settings
